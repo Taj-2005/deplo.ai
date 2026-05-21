@@ -96,7 +96,7 @@ function StageCell({ label, value, state }: Stage) {
         {label}
       </p>
       <p
-        className={`text-[11px] font-mono font-semibold truncate transition-colors duration-500 ${
+        className={`text-[9.5px] sm:text-[11px] font-mono font-semibold truncate transition-colors duration-500 ${
           state === "active"
             ? "text-[#0EA5E9]"
             : state === "done"
@@ -188,10 +188,10 @@ function PipelineViz() {
                 Push
               </div>
             </div>
-            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#F1F5F9]">
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#F1F5F9] min-w-0">
               <div className="w-2 h-2 rounded-full border-[1.5px] border-[#94A3B8] bg-white shrink-0" />
-              <div className="flex-1 h-px bg-[#E2E8F0]" />
-              <span className="text-[9px] font-mono text-[#94A3B8] shrink-0">feat: add payment gateway</span>
+              <div className="flex-1 h-px bg-[#E2E8F0] min-w-0" />
+              <span className="text-[9px] font-mono text-[#94A3B8] shrink-0 truncate max-w-[55%]">feat: add payment gateway</span>
             </div>
           </div>
 
@@ -199,7 +199,7 @@ function PipelineViz() {
 
           {/* ── ORCHESTRATOR ── */}
           <div className="bg-white border border-black p-4 shadow-[0_2px_16px_rgba(0,0,0,0.1),0_0_0_1px_rgba(0,0,0,0.06)]">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 flex items-center justify-center shrink-0">
                   <Image src="/logo.png" alt="deplo.ai" width={20} height={20} className="object-contain" />
@@ -227,35 +227,37 @@ function PipelineViz() {
           <Connector accent />
 
           {/* ── ENV SYNC ── */}
-          <div className="bg-white border border-[#E2E8F0] px-4 py-3 flex items-center gap-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden relative">
+          <div className="bg-white border border-[#E2E8F0] px-4 py-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden relative">
             <div className="pv-env-sweep absolute inset-0 pointer-events-none" />
-            <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#64748B] shrink-0">
-              Env sync
-            </span>
-            <div className="flex gap-1.5 flex-1 min-w-0 overflow-hidden">
-              {["DATABASE_URL", "API_SECRET", "NEXT_PUBLIC_URL"].map((v, i) => (
-                <span
-                  key={v}
-                  className="pv-pill-in text-[8px] font-mono px-2 py-0.5 border border-[#E2E8F0] bg-[#F8FAFC] text-[#64748B] shrink-0 whitespace-nowrap"
-                  style={{ animationDelay: `${1.0 + i * 0.3}s` }}
-                >
-                  {v}
-                </span>
-              ))}
+            <div className="relative flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+              <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#64748B] shrink-0">
+                Env sync
+              </span>
+              <div className="flex gap-1.5 flex-wrap flex-1">
+                {["DATABASE_URL", "API_SECRET", "NEXT_PUBLIC_URL"].map((v, i) => (
+                  <span
+                    key={v}
+                    className="pv-pill-in text-[8px] font-mono px-2 py-0.5 border border-[#E2E8F0] bg-[#F8FAFC] text-[#64748B] whitespace-nowrap"
+                    style={{ animationDelay: `${1.0 + i * 0.3}s` }}
+                  >
+                    {v}
+                  </span>
+                ))}
+              </div>
+              <span
+                className="pv-pill-in text-[9px] font-bold text-green-600 shrink-0 flex items-center gap-1"
+                style={{ animationDelay: "2.2s" }}
+              >
+                <span className="w-1 h-1 rounded-full bg-green-500 inline-block" />
+                Synced
+              </span>
             </div>
-            <span
-              className="pv-pill-in text-[9px] font-bold text-green-600 shrink-0 flex items-center gap-1"
-              style={{ animationDelay: "2.2s" }}
-            >
-              <span className="w-1 h-1 rounded-full bg-green-500 inline-block" />
-              Synced
-            </span>
           </div>
 
           <Connector accent />
 
           {/* ── OUTPUT ── */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {/* Frontend → Vercel */}
             <div className="bg-white border border-[#E2E8F0] p-3.5 relative overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.05)] flex flex-col gap-2.5">
               {/* Bottom accent */}
@@ -417,7 +419,7 @@ export function Hero() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.75 }}
-          className="w-full max-w-2xl border-t border-[#E2E8F0] pt-6 grid grid-cols-3 gap-4"
+          className="w-full max-w-2xl border-t border-[#E2E8F0] pt-6 grid grid-cols-3 gap-2 sm:gap-4"
         >
           {stats.map(({ value, label }) => (
             <div key={label} className="flex flex-col items-center gap-0.5">
