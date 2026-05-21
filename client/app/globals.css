@@ -2,7 +2,14 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #000000;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --accent-cyan: #00d2ff;
+  --accent-violet: #7928ca;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
 }
 
 @theme inline {
@@ -12,15 +19,125 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #ffffff;
+  color: #000000;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+/* Premium scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
+/* Flow dot animation */
+@keyframes flow-right {
+  0% {
+    left: -6px;
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% + 6px);
+    opacity: 0;
+  }
+}
+
+.flow-dot {
+  animation: flow-right 2s linear infinite;
+}
+.flow-dot-delay-1 {
+  animation-delay: 0.67s;
+}
+.flow-dot-delay-2 {
+  animation-delay: 1.33s;
+}
+
+/* Terminal cursor blink */
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.cursor-blink {
+  animation: cursor-blink 1s step-end infinite;
+}
+
+/* Subtle pulse for orchestrator node */
+@keyframes node-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0.08); }
+  50% { box-shadow: 0 0 0 6px rgba(0,0,0,0.03); }
+}
+
+.node-pulse {
+  animation: node-pulse 2s ease-in-out infinite;
+}
+
+/* Counter animation */
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* PipelineViz – vertical packet flow */
+@keyframes pv-packet-down {
+  0%   { top: -4px; opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { top: calc(100% + 4px); opacity: 0; }
+}
+
+.pv-packet {
+  animation: pv-packet-down 1.8s linear infinite;
+}
+
+/* PipelineViz – env pill appear */
+@keyframes pv-pill-in {
+  from { opacity: 0; transform: scale(0.88); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.pv-pill-in {
+  opacity: 0;
+  animation: pv-pill-in 0.3s ease forwards;
+}
+
+/* PipelineViz – env sync sweep */
+@keyframes pv-env-sweep {
+  0%          { opacity: 0; transform: translateX(-100%); }
+  10%, 80%    { opacity: 1; }
+  100%        { opacity: 0; transform: translateX(100%); }
+}
+
+.pv-env-sweep {
+  background: linear-gradient(90deg, transparent 0%, rgba(0,210,255,0.07) 50%, transparent 100%);
+  animation: pv-env-sweep 3s ease-in-out infinite 2s;
 }
