@@ -68,6 +68,12 @@ No registry setup needed — Render builds and hosts the image automatically.
 
 Application logs are written to **stdout** (view in Render → Logs). Do not enable file logging in the container.
 
+## Prisma on Render (Docker)
+
+`schema.prisma` includes `binaryTargets = ["native", "debian-openssl-3.0.x"]` for the
+`node:20-bookworm-slim` runtime. If you see a Query Engine mismatch after changing this,
+trigger a **Clear build cache & deploy** on Render.
+
 ## After deploy
 
 Set on Vercel (frontend):
