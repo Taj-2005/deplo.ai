@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { useAuth } from "@/context/AuthContext";
 
 interface Integration {
   name: string;
@@ -10,6 +11,7 @@ interface Integration {
   bg: string;
   padded?: boolean;
   live: boolean;
+  authGated?: boolean;
 }
 
 const integrations: Integration[] = [
@@ -19,6 +21,7 @@ const integrations: Integration[] = [
     logo: "/github.png",
     bg: "bg-white",
     live: true,
+    authGated: true,
   },
   {
     name: "Vercel",
@@ -74,7 +77,21 @@ const cardVariant = {
   },
 };
 
+function getStatusLabel(integration: Integration, isAuthenticated: boolean): string {
+  if (integration.authGated && isAuthenticated) return "Connected";
+  if (integration.live) return "Live";
+  return "Soon";
+}
+
+function getStatusColor(integration: Integration, isAuthenticated: boolean): string {
+  if (integration.authGated && isAuthenticated) return "bg-green-500";
+  if (integration.live) return "bg-green-400";
+  return "bg-[#E2E8F0]";
+}
+
 export function Integrations() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <section id="integrations" className="bg-white py-24 sm:py-32">
       <div className="max-w-6xl mx-auto px-5 sm:px-8">
@@ -119,7 +136,11 @@ export function Integrations() {
               key={integration.name}
               variants={cardVariant}
               whileHover={{ y: -3, transition: { duration: 0.18 } }}
-              className="group flex flex-col items-center gap-4 p-6 sm:p-8 border-r border-b border-[#E2E8F0] cursor-default hover:bg-gray-50/70 transition-colors"
+              className={`group flex flex-col items-center gap-4 p-6 sm:p-8 border-r border-b border-[#E2E8F0] cursor-default transition-colors ${
+                integration.authGated && isAuthenticated
+                  ? "bg-green-50/40 hover:bg-green-50/70"
+                  : "hover:bg-gray-50/70"
+              }`}
             >
               {/* Logo box */}
               <div
@@ -147,12 +168,16 @@ export function Integrations() {
               {/* Status indicator */}
               <div className="flex items-center gap-1.5">
                 <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    integration.live ? "bg-green-400" : "bg-[#E2E8F0]"
-                  }`}
+                  className={`w-1.5 h-1.5 rounded-full ${getStatusColor(integration, isAuthenticated)}`}
                 />
-                <span className="text-[10px] text-[#94A3B8]">
-                  {integration.live ? "Live" : "Soon"}
+                <span
+                  className={`text-[10px] ${
+                    integration.authGated && isAuthenticated
+                      ? "text-green-700 font-medium"
+                      : "text-[#94A3B8]"
+                  }`}
+                >
+                  {getStatusLabel(integration, isAuthenticated)}
                 </span>
               </div>
             </motion.div>

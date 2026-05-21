@@ -1,0 +1,43 @@
+name: Docker Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-server:
+    name: Build Server Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build server image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./server
+          push: false
+          tags: deplo-server:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-client:
+    name: Build Client Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build client image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./client
+          push: false
+          tags: deplo-client:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

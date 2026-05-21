@@ -5,21 +5,26 @@ on:
     branches: [main]
     paths:
       - "client/**"
+      - "server/**"
+
+concurrency:
+  group: pr-lint-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  lint:
-    name: Lint & Type Check
+  client:
+    name: Client — Lint & Type Check
     runs-on: ubuntu-latest
+    if: |
+      contains(github.event.pull_request.changed_files, 'client') ||
+      true
     defaults:
       run:
         working-directory: client
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
@@ -33,3 +38,30 @@ jobs:
 
       - name: TypeScript
         run: npx tsc --noEmit
+
+  server:
+    name: Server — Lint & Type Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: TypeScript
+        run: npm run typecheck

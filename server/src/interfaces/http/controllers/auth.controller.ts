@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import type { AuthService } from "../../../application/services/AuthService";
 import { env } from "../../../config/env";
+import { logger } from "../../../shared/logger/logger";
 
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -9,8 +10,8 @@ export class AuthController {
     const params = new URLSearchParams({
       client_id: env.GITHUB_CLIENT_ID,
       redirect_uri: env.GITHUB_REDIRECT_URI,
-      scope: "read:user user:email repo",
     });
+    // GitHub App permissions are configured on the app — no scope query param needed
     res.redirect(`https://github.com/login/oauth/authorize?${params.toString()}`);
   };
 
@@ -30,7 +31,11 @@ export class AuthController {
       const clientUrl = env.ALLOWED_ORIGINS[0] ?? "http://localhost:3000";
       res.redirect(`${clientUrl}/auth/callback?token=${encodeURIComponent(token)}&userId=${user.id}`);
     } catch (err) {
-      next(err);
+      logger.error("GitHub OAuth callback failed", {
+        message: err instanceof Error ? err.message : String(err),
+      });
+      const clientUrl = env.ALLOWED_ORIGINS[0] ?? "http://localhost:3000";
+      res.redirect(`${clientUrl}/?auth=failed`);
     }
   };
 

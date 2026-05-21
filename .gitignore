@@ -2,3 +2,35 @@
 2/
 3/
 4/
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.next/
+out/
+
+# Environment files — NEVER commit real .env files
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+!.env.example
+
+# Logs
+logs/
+*.log
+
+# Coverage
+coverage/
+test-results/
+
+# Caches
+.eslintcache
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,3 +1,4 @@
+import { AuthPageShell } from "@/components/auth/AuthPageShell";
 import { Navbar } from "@/components/landing/Navbar";
 import { Hero } from "@/components/landing/Hero";
 import { HowItWorks } from "@/components/landing/HowItWorks";
@@ -11,6 +12,7 @@ import { Footer } from "@/components/landing/Footer";
 export default function Home() {
   return (
     <>
+      <AuthPageShell />
       <Navbar />
       <main id="main-content" role="main" aria-label="Main content" className="flex flex-col">
         <Hero />
