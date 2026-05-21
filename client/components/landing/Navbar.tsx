@@ -45,8 +45,8 @@ export function Navbar() {
               <Image
                 src="/logo.png"
                 alt="deplo.ai logo"
-                width={28}
-                height={28}
+                width={48}
+                height={48}
                 className="object-contain"
                 priority
               />
@@ -84,7 +84,7 @@ export function Navbar() {
                 href="#"
                 className="flex items-center gap-1.5 h-8 px-4 text-black text-[13px] font-semibold tracking-[-0.01em] hover:bg-gray-100 rounded transition-colors"
               >
-                <Image src="/logo.png" alt="" width={14} height={14} className="object-contain" />
+                <Image src="/logo.png" alt="" width={28} height={28} className="object-contain" />
                 Launch App
               </a>
             </div>
@@ -133,7 +133,7 @@ export function Navbar() {
                   href="#"
                   className="flex items-center justify-center gap-2 h-10 bg-black text-white text-[13px] font-semibold hover:bg-gray-900 transition-colors"
                 >
-                  <Image src="/logo.png" alt="" width={15} height={15} className="object-contain" />
+                  <Image src="/logo.png" alt="" width={28} height={28} className="object-contain" />
                   Launch App
                 </a>
               </div>
