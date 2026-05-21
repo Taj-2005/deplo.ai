@@ -18,7 +18,7 @@ export class AuthController {
   handleGithubCallback = async (
     req: Request,
     res: Response,
-    next: NextFunction,
+    _next: NextFunction,
   ): Promise<void> => {
     try {
       const code = req.query["code"] as string | undefined;

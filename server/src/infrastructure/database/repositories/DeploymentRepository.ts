@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import type { IDeploymentRepository } from "../../../domain/deployment/DeploymentRepository.interface";
 import type {
   Deployment,
@@ -71,14 +71,27 @@ export class DeploymentRepository implements IDeploymentRepository {
   }
 
   async update(id: string, input: UpdateDeploymentInput): Promise<Deployment> {
+    const data: Prisma.DeploymentUpdateInput = {};
+
+    if (input.status !== undefined) data.status = input.status;
+    if (input.detectedStack !== undefined) {
+      data.detectedStack = input.detectedStack as unknown as Prisma.InputJsonValue;
+    }
+    if (input.envVariables !== undefined) {
+      data.envVariables = input.envVariables as unknown as Prisma.InputJsonValue;
+    }
+    if (input.frontendUrl !== undefined) data.frontendUrl = input.frontendUrl;
+    if (input.backendUrl !== undefined) data.backendUrl = input.backendUrl;
+    if (input.logs !== undefined) {
+      data.logs = input.logs as unknown as Prisma.InputJsonValue;
+    }
+    if (input.vercelProjectId !== undefined) data.vercelProjectId = input.vercelProjectId;
+    if (input.renderServiceId !== undefined) data.renderServiceId = input.renderServiceId;
+    if (input.error !== undefined) data.error = input.error;
+
     const row = await this.prisma.deployment.update({
       where: { id },
-      data: {
-        ...input,
-        detectedStack: input.detectedStack ?? undefined,
-        envVariables: input.envVariables ?? undefined,
-        logs: input.logs ?? undefined,
-      },
+      data,
     });
     return this.mapRow(row);
   }

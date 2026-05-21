@@ -28,6 +28,7 @@ import { DeploymentService } from "./application/services/DeploymentService";
 import { AuthController } from "./interfaces/http/controllers/auth.controller";
 import { HealthController } from "./interfaces/http/controllers/health.controller";
 import { createAuthMiddleware } from "./interfaces/http/middleware/auth.middleware";
+import { asyncHandler } from "./shared/utils/asyncHandler";
 
 async function bootstrap(): Promise<void> {
   // ── Infrastructure ───────────────────────────────────────────────────────
@@ -88,11 +89,7 @@ async function bootstrap(): Promise<void> {
   const app = express();
 
   app.set("trust proxy", 1);
-  app.use(
-    helmet({
-      contentSecurityPolicy: env.NODE_ENV === "production" ? undefined : false,
-    }),
-  );
+  app.use(helmet());
   app.use(compression());
   app.use(
     cors({
@@ -127,10 +124,17 @@ async function bootstrap(): Promise<void> {
   const healthController = new HealthController(prisma, redis);
   const authMiddleware = createAuthMiddleware(authService);
 
-  apiRouter.get("/health", healthController.check);
+  apiRouter.get("/health", asyncHandler(healthController.check));
   apiRouter.get("/auth/github", authController.getGithubOAuthUrl);
-  apiRouter.get("/auth/github/callback", authController.handleGithubCallback);
-  apiRouter.get("/auth/me", authMiddleware, authController.getCurrentUser);
+  apiRouter.get(
+    "/auth/github/callback",
+    asyncHandler(authController.handleGithubCallback),
+  );
+  apiRouter.get(
+    "/auth/me",
+    authMiddleware,
+    asyncHandler(authController.getCurrentUser),
+  );
 
   app.use(`/api/${env.API_VERSION}`, apiRouter);
 
@@ -150,16 +154,22 @@ async function bootstrap(): Promise<void> {
   // ── Graceful Shutdown ────────────────────────────────────────────────────
   const shutdown = async (signal: string): Promise<void> => {
     logger.info(`${signal} received — shutting down gracefully`);
-    server.close(async () => {
-      await prisma.$disconnect();
-      await closeRedisClient();
-      logger.info("Server closed");
-      process.exit(0);
+    server.close(() => {
+      void (async () => {
+        await prisma.$disconnect();
+        await closeRedisClient();
+        logger.info("Server closed");
+        process.exit(0);
+      })();
     });
   };
 
-  process.on("SIGTERM", () => shutdown("SIGTERM"));
-  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => {
+    void shutdown("SIGTERM");
+  });
+  process.on("SIGINT", () => {
+    void shutdown("SIGINT");
+  });
 }
 
 bootstrap().catch((err: unknown) => {

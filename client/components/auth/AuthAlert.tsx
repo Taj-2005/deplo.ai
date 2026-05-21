@@ -1,40 +1,55 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+
+interface AuthFailureState {
+  failed: boolean;
+  reason: string | null;
+}
+
+function readAuthFailure(): AuthFailureState {
+  if (typeof window === "undefined") {
+    return { failed: false, reason: null };
+  }
+  const params = new URLSearchParams(window.location.search);
+  return {
+    failed: params.get("auth") === "failed",
+    reason: params.get("reason"),
+  };
+}
 
 export function AuthAlert() {
-  const searchParams = useSearchParams();
-  const [visible, setVisible] = useState(false);
+  const [failure] = useState(readAuthFailure);
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    if (searchParams.get("auth") === "failed") {
-      setVisible(true);
+    if (failure.failed) {
       window.history.replaceState(null, "", "/");
     }
-  }, [searchParams]);
+  }, [failure.failed]);
 
-  const reason = searchParams.get("reason");
   const reasonText =
-    reason === "server"
+    failure.reason === "server"
       ? "API server error during sign-in."
-      : reason === "unreachable"
+      : failure.reason === "unreachable"
         ? "Could not reach the API server."
-        : reason === "callback"
+        : failure.reason === "callback"
           ? "OAuth callback failed."
           : "GitHub sign-in failed.";
 
-  if (!visible) return null;
+  if (!failure.failed || dismissed) return null;
 
   return (
     <div
       role="alert"
       className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 bg-black text-white text-[13px] px-4 py-3 shadow-lg max-w-sm w-[calc(100%-2rem)]"
     >
-      <span className="flex-1">{reasonText} Check server logs and GitHub App callback URL.</span>
+      <span className="flex-1">
+        {reasonText} Check server logs and GitHub App callback URL.
+      </span>
       <button
         type="button"
-        onClick={() => setVisible(false)}
+        onClick={() => setDismissed(true)}
         className="text-white/70 hover:text-white text-[12px] shrink-0"
         aria-label="Dismiss"
       >
