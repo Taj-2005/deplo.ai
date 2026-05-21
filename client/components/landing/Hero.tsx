@@ -201,7 +201,7 @@ function PipelineViz() {
           <div className="bg-white border border-black p-4 shadow-[0_2px_16px_rgba(0,0,0,0.1),0_0_0_1px_rgba(0,0,0,0.06)]">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 bg-black flex items-center justify-center shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
+                <div className="w-8 h-8 flex items-center justify-center shrink-0">
                   <Image src="/logo.png" alt="deplo.ai" width={20} height={20} className="object-contain" />
                 </div>
                 <span className="text-[14px] font-semibold text-black tracking-[-0.03em]">
