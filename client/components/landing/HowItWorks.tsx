@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Cpu, Layers, KeyRound, CheckCircle } from "lucide-react";
 import Image from "next/image";
 import type { LucideIcon } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 interface Step {
   n: string;
@@ -85,6 +86,8 @@ const item = {
 };
 
 export function HowItWorks() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <section id="how-it-works" className="bg-white py-24 sm:py-32">
       <div className="max-w-6xl mx-auto px-5 sm:px-8">
@@ -154,9 +157,17 @@ export function HowItWorks() {
 
                 {/* Text */}
                 <div className="flex flex-col gap-1.5">
-                  <h3 className="text-[14.5px] font-semibold text-black tracking-[-0.02em]">
-                    {step.title}
-                  </h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-[14.5px] font-semibold text-black tracking-[-0.02em]">
+                      {step.title}
+                    </h3>
+                    {step.n === "01" && isAuthenticated && (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.08em] text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5">
+                        <span className="w-1 h-1 rounded-full bg-green-500" />
+                        Connected
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[13px] leading-[1.65] text-[#64748B]">
                     {step.desc}
                   </p>

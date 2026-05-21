@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 const navLinks = [
   { href: "#features", label: "Features" },
@@ -16,12 +18,22 @@ const navLinks = [
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { isAuthenticated, isLoading, signIn, signOut } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 24);
     window.addEventListener("scroll", handler, { passive: true });
     return () => window.removeEventListener("scroll", handler);
   }, []);
+
+  function handleLaunchApp() {
+    if (isAuthenticated) {
+      router.push("/dashboard");
+    } else {
+      signIn();
+    }
+  }
 
   return (
     <>
@@ -44,10 +56,7 @@ export function Navbar() {
         <div className="max-w-6xl mx-auto px-5 sm:px-8">
           <div className="flex items-center justify-between h-14">
             {/* Logo */}
-            <Link
-              href="/"
-              className="flex items-center gap-2 group flex-shrink-0"
-            >
+            <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
               <Image
                 src="/logo.png"
                 alt="deplo.ai logo"
@@ -60,8 +69,7 @@ export function Navbar() {
                 className="text-[15px] font-semibold tracking-[-0.04em] text-black"
                 style={{ letterSpacing: "-0.04em" }}
               >
-                deplo
-                <span className="text-[#94A3B8]">.ai</span>
+                deplo<span className="text-[#94A3B8]">.ai</span>
               </span>
             </Link>
 
@@ -80,19 +88,30 @@ export function Navbar() {
 
             {/* Desktop CTAs */}
             <div className="hidden md:flex items-center gap-3">
-              <a
-                href="#"
-                className="text-[13px] font-medium text-[#64748B] hover:text-black transition-colors"
-              >
-                Sign in
-              </a>
-              <a
-                href="#"
+              {!isLoading && (
+                isAuthenticated ? (
+                  <button
+                    onClick={signOut}
+                    className="text-[13px] font-medium text-[#64748B] hover:text-black transition-colors"
+                  >
+                    Sign out
+                  </button>
+                ) : (
+                  <button
+                    onClick={signIn}
+                    className="text-[13px] font-medium text-[#64748B] hover:text-black transition-colors"
+                  >
+                    Sign in
+                  </button>
+                )
+              )}
+              <button
+                onClick={handleLaunchApp}
                 className="flex items-center gap-1.5 h-8 px-4 text-black text-[13px] font-semibold tracking-[-0.01em] hover:bg-gray-100 rounded transition-colors"
               >
                 <Image src="/logo.png" alt="" width={28} height={28} className="object-contain" />
-                Launch App
-              </a>
+                {isAuthenticated ? "Dashboard" : "Launch App"}
+              </button>
             </div>
 
             {/* Mobile menu button */}
@@ -129,19 +148,30 @@ export function Navbar() {
                 </a>
               ))}
               <div className="pt-3 mt-2 border-t border-black/5 flex flex-col gap-2">
-                <a
-                  href="#"
-                  className="px-3 py-2.5 text-[14px] font-medium text-gray-700 hover:text-black transition-colors"
-                >
-                  Sign in
-                </a>
-                <a
-                  href="#"
+                {!isLoading && (
+                  isAuthenticated ? (
+                    <button
+                      onClick={() => { setMobileOpen(false); signOut(); }}
+                      className="px-3 py-2.5 text-[14px] font-medium text-gray-700 hover:text-black transition-colors text-left"
+                    >
+                      Sign out
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => { setMobileOpen(false); signIn(); }}
+                      className="px-3 py-2.5 text-[14px] font-medium text-gray-700 hover:text-black transition-colors text-left"
+                    >
+                      Sign in with GitHub
+                    </button>
+                  )
+                )}
+                <button
+                  onClick={() => { setMobileOpen(false); handleLaunchApp(); }}
                   className="flex items-center justify-center gap-2 h-10 bg-black text-white text-[13px] font-semibold hover:bg-gray-900 transition-colors"
                 >
                   <Image src="/logo.png" alt="" width={28} height={28} className="object-contain" />
-                  Launch App
-                </a>
+                  {isAuthenticated ? "Dashboard" : "Launch App"}
+                </button>
               </div>
             </div>
           </motion.div>

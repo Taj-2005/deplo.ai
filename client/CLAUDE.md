@@ -1,612 +1,435 @@
-# CLAUDE.md
+# CLAUDE.md — deplo.ai Engineering Handbook
 
-# deplo.ai
-
-AI-powered deployment orchestration platform for developers.
+> This is the **authoritative engineering and architecture guide** for the deplo.ai platform. All contributors, AI coding agents, and future developers treat this document as the single source of truth. Update it immediately when architecture, stack, or workflows change.
 
 ---
 
-# Project Vision
+## 1. Project Vision
 
-deplo.ai helps developers deploy production-ready applications without deep DevOps knowledge.
+deplo.ai is an **AI-powered deployment orchestration platform**. It eliminates DevOps complexity for indie hackers, startups, students, and hackathon teams by:
 
-The platform connects to a user's GitHub repository, analyzes the codebase, detects the frontend/backend stack automatically, asks for required environment variables, deploys services to free-tier cloud platforms, and returns production-ready frontend/backend URLs.
+1. Connecting to a GitHub repository
+2. Automatically detecting the frontend/backend stack
+3. Asking for required environment variables
+4. Deploying frontend → Vercel, backend → Render
+5. Returning production-ready URLs in under 3 minutes
 
-The goal is to remove infrastructure complexity for:
-
-* indie hackers
-* startup founders
-* students
-* hackathon teams
-* frontend-focused developers
-
-Core philosophy:
-
-> Code goes in. Production URL comes out.
+**Core Philosophy:** _Code goes in. Production URL comes out._
 
 ---
 
-# MVP Scope (STRICT)
+## 2. Monorepo Structure
 
-The MVP should ONLY support:
-
-## Supported Frontend Frameworks
-
-* Next.js
-* React (Vite/Create React App)
-
-## Supported Backend Frameworks
-
-* Express.js
-* Node.js APIs
-* Fastify
-
-## Supported Languages
-
-* JavaScript
-* TypeScript
-
-## Supported Platforms
-
-### Frontend Deployment
-
-* Vercel
-
-### Backend Deployment
-
-* Render
-
-## Authentication Providers
-
-* GitHub OAuth
-* Vercel OAuth/API
-* Render OAuth/API
-
----
-
-# Important MVP Constraints
-
-DO NOT BUILD:
-
-* Kubernetes support
-* Terraform generation
-* AWS/GCP/Azure integrations
-* Docker execution engine
-* Multi-cloud orchestration
-* AI agent frameworks everywhere
-* Custom hosting infrastructure
-* Full CI/CD pipelines
-* Runtime container execution
-* Serverless orchestration
-* Infrastructure provisioning
-* VM management
-* Auto-scaling systems
-
-This MVP is ONLY:
-
-> Repo analysis + deployment orchestration on existing free-tier providers.
-
----
-
-# Core User Flow
-
-## Step 1 — User Login
-
-User signs in with GitHub.
-
-## Step 2 — Repository Selection
-
-User selects:
-
-* frontend repo
-* backend repo
-  OR monorepo
-
-## Step 3 — Repo Analysis
-
-The platform automatically detects:
-
-* framework
-* package manager
-* build command
-* output directory
-* runtime
-* ports
-* env variable usage
-
-## Step 4 — Environment Variables
-
-The platform scans for:
-
-* process.env
-* import.meta.env
-* dotenv usage
-* config files
-
-Then generates a required env variable form.
-
-Example:
-
-```env
-DATABASE_URL=
-JWT_SECRET=
-OPENAI_API_KEY=
-NEXT_PUBLIC_API_URL=
 ```
-
-## Step 5 — Backend Deployment
-
-Deploy backend to Render:
-
-* create service
-* connect GitHub repo
-* set build/start commands
-* inject env variables
-* wait for deployment completion
-
-Receive:
-
-```txt
-https://api-myapp.onrender.com
-```
-
-## Step 6 — Frontend Linking
-
-Automatically inject backend URL into frontend env variables.
-
-Example:
-
-```env
-NEXT_PUBLIC_API_URL=https://api-myapp.onrender.com
-```
-
-## Step 7 — Frontend Deployment
-
-Deploy frontend to Vercel:
-
-* create project
-* connect repo
-* inject env vars
-* deploy
-
-Receive:
-
-```txt
-https://myapp.vercel.app
-```
-
-## Step 8 — Return Final URLs
-
-Dashboard shows:
-
-* frontend production URL
-* backend production URL
-* deployment status
-* logs
-
----
-
-# Product Positioning
-
-deplo.ai is NOT:
-
-* a replacement for DevOps engineers
-* a cloud provider
-* a Kubernetes platform
-* an infrastructure hosting company
-
-It IS:
-
-> an AI-powered deployment orchestration layer.
-
-Primary positioning:
-
-> Deploy fullstack apps without DevOps complexity.
-
-Secondary positioning:
-
-> Connect GitHub. Get production URLs.
-
----
-
-# Brand Identity
-
-## Brand Name
-
-* deplo.ai
-
-## Brand Personality
-
-* modern
-* minimal
-* developer-first
-* premium
-* fast
-* trustworthy
-* AI-native
-* infrastructure-focused
-
-## Visual Direction
-
-Inspired by:
-
-* Linear
-* Vercel
-* Railway
-* Render
-* Stripe
-* Raycast
-
-The design language should feel:
-
-* geometric
-* minimal
-* precise
-* clean
-* high-contrast
-* developer-native
-
-Avoid:
-
-* childish gradients
-* generic AI robots
-* excessive glassmorphism
-* cluttered dashboards
-
----
-
-# Branding Assets
-
-All branding assets are stored in:
-
-```txt
-/docs/branding
-```
-
-This includes:
-
-* logo files
-* icon-only variants
-* favicon assets
-* dark mode versions
-* typography guidelines
-* color palettes
-* hero branding references
-
----
-
-# Logo Direction
-
-The deplo.ai logo represents:
-
-* deployment flow
-* orchestration
-* cloud infrastructure
-* automation
-* AI-assisted deployment
-
-Logo style:
-
-* black typography
-* minimal geometric icon
-* premium SaaS aesthetic
-* scalable favicon-friendly iconography
-
-Preferred fonts:
-
-* Geist Sans
-* Inter
-
-Preferred UI font:
-
-* Geist Sans
-
-Preferred mono font:
-
-* Geist Mono
-
----
-
-# Recommended Colors
-
-## Light Theme
-
-```txt
-Background: #FFFFFF
-Primary Text: #000000
-Secondary Text: #64748B
-Border: #E2E8F0
-Accent Gradient: #00D2FF → #7928CA
-```
-
-## Dark Theme
-
-```txt
-Background: #030303
-Primary Text: #F8FAFC
-Secondary Text: #94A3B8
-Accent Glow: #00F5D4
+deplo-ai/
+├── client/          # Next.js 16 landing page + future dashboard
+├── server/          # Node.js TypeScript API (GraphQL + REST)
+├── docker-compose.yml
+├── .github/
+│   └── workflows/
+│       ├── ci.yml       # Main CI (lint + type-check + test + build)
+│       ├── pr-lint.yml  # Fast PR gate
+│       └── docker.yml   # Docker build verification
+└── CLAUDE.md
 ```
 
 ---
 
-# Technical Architecture
+## 3. Tech Stack
 
-## Frontend
-
-Framework:
-
-* Next.js
-
-Styling:
-
-* TailwindCSS
-* shadcn/ui
-
-Purpose:
-
-* dashboard
-* repo selection
-* deployment status
-* env variable forms
-* onboarding
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 16 (App Router), React 19, TypeScript 5 strict |
+| Styling | TailwindCSS v4 (`@import "tailwindcss"`) |
+| Animation | Framer Motion 12 |
+| Backend | Node.js 20, TypeScript 5 strict, Express 4 |
+| API | GraphQL (Apollo Server 4) + REST fallback |
+| Database | PostgreSQL 16 via Prisma ORM |
+| Cache | Redis 7 (ioredis) |
+| Auth | GitHub OAuth → JWT |
+| Docs | Swagger/OpenAPI 3.0 (light mode, at `/docs`) |
+| Containerization | Docker + docker-compose |
+| CI/CD | GitHub Actions |
+| Deployment | Client → Vercel, Server → Render |
 
 ---
 
-## Backend API
+## 4. Backend Architecture
 
-Preferred:
+### 4.1 Layered Clean Architecture
 
-* Go
+```
+server/src/
+├── config/              # Env validation, database config
+├── domain/              # Pure domain entities and repository interfaces
+│   ├── user/            # User entity + IUserRepository
+│   ├── deployment/      # Deployment entity + IDeploymentRepository
+│   └── shared/          # Result<T, E> type
+├── application/         # Use cases / business logic
+│   └── services/        # AuthService, DeploymentService, AnalysisService
+├── infrastructure/      # Concrete implementations
+│   ├── database/        # Prisma client + repository implementations
+│   ├── redis/           # RedisClient + CacheService
+│   ├── github/          # GitHubAdapter (OAuth, repo access)
+│   ├── vercel/          # VercelAdapter (project/deploy management)
+│   └── render/          # RenderAdapter (service/deploy management)
+├── interfaces/          # Delivery mechanism layer
+│   ├── graphql/         # Apollo schema, resolvers, context
+│   ├── http/            # Express controllers, middleware, validators
+│   └── swagger/         # OpenAPI spec and Swagger UI setup
+└── shared/              # Cross-cutting concerns
+    ├── logger/          # Winston logger
+    └── errors/          # AppError class + error codes
+```
 
-Alternative:
+### 4.2 Dependency Rules (STRICTLY enforced)
 
-* Node.js
+- `domain` depends on **nothing** — pure TypeScript interfaces and entities
+- `application` depends on `domain` and `shared` only — **no** Prisma, **no** Redis, **no** Express
+- `infrastructure` depends on `domain` and `application` interfaces
+- `interfaces` depends on `application` (services) — **never** on `infrastructure` directly
+- `config` and `shared` are usable by all layers
 
-Responsibilities:
+### 4.3 SOLID Principles Enforcement
 
-* OAuth handling
-* repo analysis
-* orchestration
-* deployment management
-* webhook handling
-* status tracking
+| Principle | How enforced |
+|-----------|-------------|
+| Single Responsibility | One class = one concern. Controllers only route, services only orchestrate, repositories only persist |
+| Open/Closed | Extend via new implementations of repository interfaces — never modify domain interfaces |
+| Liskov Substitution | All repository implementations satisfy their `I*Repository` interface |
+| Interface Segregation | Separate `IUserRepository`, `IDeploymentRepository`, `IRepositoryRepository` — no fat interfaces |
+| Dependency Inversion | Services depend on interfaces, not concrete classes |
 
----
+### 4.4 Error Handling
 
-## AI/Analysis Layer
+All errors use `AppError` with typed `ErrorCode`:
+```typescript
+throw AppError.notFound("Deployment");
+throw AppError.unauthorized();
+throw AppError.conflict("Deployment already completed");
+throw AppError.externalService("GitHub", "API rate limit exceeded");
+```
 
-Preferred:
-
-* Python
-
-Responsibilities:
-
-* repo analysis
-* framework detection
-* env detection
-* heuristic analysis
-* optional LLM fallback
-
-IMPORTANT:
-Do NOT rely entirely on LLMs.
-Use deterministic heuristics first.
-
----
-
-# Database
-
-Preferred:
-
-* PostgreSQL
-
-Suggested provider:
-
-* Supabase
-
-Store:
-
-* users
-* OAuth tokens
-* repos
-* deployments
-* logs
-* deployment states
-* env metadata
+Never use `throw new Error()` directly in application code.
 
 ---
 
-# Async Jobs
+## 5. GraphQL Architecture
 
-Deployments are asynchronous.
+### 5.1 Schema-First Approach
 
-Required:
+All schema is defined in `src/interfaces/graphql/schema/typeDefs.ts` using SDL. This is the source of truth — TypeScript types are derived from the schema.
 
-* Redis queues
-  OR
-* Inngest
-  OR
-* Trigger.dev
+### 5.2 Resolver Organization
 
-Never handle deployments directly in request-response lifecycle.
+Resolvers live in `src/interfaces/graphql/resolvers/index.ts`. Split into domain-specific files when any domain exceeds ~300 lines.
 
----
+Rules:
+- Resolvers **never** call repositories directly — always through services
+- `requireAuth(ctx)` guard used at the start of all authenticated resolvers
+- Parent field resolvers use DataLoaders when N+1 risk exists
 
-# Security Requirements
+### 5.3 Context
 
-CRITICAL:
-
-* Never ask for passwords
-* Never store raw cloud credentials
-* Use OAuth wherever possible
-* Request minimum OAuth scopes
-* Encrypt sensitive tokens
-* Validate webhook signatures
-* Avoid running arbitrary user code on platform servers
-
-The platform should orchestrate deployments — NOT execute user applications.
+Context is built per-request in `buildContext()`. It includes:
+- `prisma` — for simple queries
+- `userRepository`, `deploymentRepository` — domain repositories
+- `authService`, `deploymentService` — application services
+- `cache` — CacheService for Redis access
+- `currentUser` — resolved from JWT (or `null` for anonymous)
 
 ---
 
-# Repo Analysis Heuristics
+## 6. Database (PostgreSQL / Prisma)
 
-Detect using:
+### 6.1 Schema Rules
 
-* package.json
-* dependencies
-* lock files
-* config files
-* framework-specific files
+- All IDs use `cuid()` — never `autoincrement()` integers for public-facing entities
+- Every table has `createdAt` and `updatedAt`
+- All foreign keys have explicit `onDelete:` behavior
+- All frequently-queried fields have `@@index`
+- Sensitive data (tokens) stored **encrypted** — never plaintext
 
-Examples:
-
-## Next.js
-
-Detect:
-
-* next.config.js
-* dependency: next
-
-## Vite
-
-Detect:
-
-* vite.config.ts
-* dependency: vite
-
-## Express
-
-Detect:
-
-* express dependency
-
-## Fastify
-
-Detect:
-
-* fastify dependency
-
----
-
-# Deployment Status States
-
-Supported statuses:
-
-* analyzing
-* waiting_for_env
-* deploying_backend
-* backend_ready
-* deploying_frontend
-* completed
-* failed
-
----
-
-# Future Features (NOT MVP)
-
-Potential future roadmap:
-
-* Docker support
-* Terraform/OpenTofu generation
-* Cost estimation
-* AI infra recommendations
-* Multi-cloud deployments
-* Railway support
-* Supabase auto-creation
-* Background workers
-* Cron job support
-* Kubernetes support
-* Monitoring integrations
-* One-click staging environments
-* Production optimization suggestions
-
-These are intentionally OUT OF SCOPE for V1.
-
----
-
-# UX Philosophy
-
-The experience should feel:
-
-* instant
-* magical
-* low-friction
-* developer-native
-* trustworthy
-* minimal
-
-Avoid enterprise complexity.
-
-The user should feel:
-
-> “I connected GitHub and got production URLs in minutes.”
-
----
-
-# Landing Page Messaging
-
-Primary Hero:
-
-> From Repo to Production URL.
-
-Secondary Hero:
-
-> Deploy fullstack apps without DevOps complexity.
-
-Terminal-style demo:
+### 6.2 Migration Workflow
 
 ```bash
-$ deplo deploy --main
+npm run prisma:migrate          # dev: creates + applies migration
+npm run prisma:migrate:deploy   # prod: applies existing migrations only
+npm run prisma:seed             # seed demo data
+```
 
-── Detecting Next.js frontend...
-── Deploying to Vercel...
-── Detecting Express backend...
-── Deploying to Render...
-── Syncing environment variables...
+**Never** use `prisma db push` in production.
 
-✔ Production URL Ready
+---
+
+## 7. Redis / Caching
+
+| Use Case | Key Pattern | TTL |
+|----------|-------------|-----|
+| GitHub repo list | `repos:{userId}` | 300s |
+| Deployment status | `deployment:{id}` | 30s |
+| User profile | `user:{id}` | 3600s |
+
+```typescript
+await cache.get<Deployment>("deployment:abc123");
+await cache.set("deployment:abc123", data, 30);
+await cache.delPattern("repos:*");
+cache.buildKey("deployment", id);
 ```
 
 ---
 
-# Maintenance Instructions
+## 8. Authentication
 
-IMPORTANT:
-This CLAUDE.md file must always remain updated as the project evolves.
+- GitHub OAuth Code → access token → AES-256-GCM encrypted at rest
+- JWT issued on each login (HS256, 7-day expiry)
+- HTTP: `createAuthMiddleware()` → `req.userId`
+- GraphQL: `buildContext()` → `ctx.currentUser`
 
-Whenever:
+---
 
-* architecture changes
-* new providers are added
-* deployment flows change
-* branding evolves
-* APIs change
-* stack decisions change
-* folder structures change
-* roadmap priorities shift
-* security requirements change
-* supported frameworks/providers expand
+## 9. Frontend Architecture (Next.js)
 
-this document must also be updated immediately.
+### 9.1 Directory Structure
 
-This file is the single source of truth for:
+```
+client/
+├── app/                  # Next.js App Router
+│   ├── layout.tsx        # Root layout + SEO metadata
+│   ├── page.tsx          # Landing page composition
+│   ├── globals.css       # TailwindCSS v4 theme + keyframes
+│   ├── sitemap.ts        # Dynamic sitemap
+│   ├── robots.ts         # Crawl rules
+│   └── manifest.ts       # PWA manifest
+├── components/
+│   ├── landing/          # Landing page sections
+│   └── seo/              # JSON-LD structured data
+└── public/               # Static assets
+```
 
-* product direction
-* engineering decisions
-* architecture
-* branding
-* deployment orchestration logic
-* MVP constraints
-* UX philosophy
+### 9.2 Component Rules
 
-All contributors, AI coding agents, and future developers should treat this document as the authoritative project context.
+- **No business logic in components** — extract to hooks or utilities
+- **No inline styles** — only TailwindCSS classes
+- **No `any` types** — strict TypeScript everywhere
+- `"use client"` only when browser APIs are required
+- Server Components are the default
 
-Always prefer updating this document rather than letting implementa
+### 9.3 TailwindCSS v4
 
-1. Simplicity over feature overload
-2. Reliability over AI hype
-3. Fast onboarding over customization
-4. Minimal UI over enterprise dashboards
-5. Smart defaults over endless configuration
-6. Orchestration over infrastructure ownership
-7. Developer trust above everything
+```css
+/* globals.css */
+@import "tailwindcss";
+@theme { --color-accent-cyan: #00d2ff; }
+```
+
+Use CSS variables in `globals.css` for all brand colors. Never hardcode hex in component JSX for repeated values.
+
+### 9.4 Animation Rules (Framer Motion 12)
+
+- `whileInView` + `viewport={{ once: true }}` for scroll animations
+- `variants` objects for stagger animations
+- `AnimatePresence` for exit animations
+- `useInView` from `framer-motion`
+
+---
+
+## 10. SEO Architecture
+
+| Feature | File |
+|---------|------|
+| Metadata (title, OG, Twitter) | `app/layout.tsx` |
+| Structured Data | `components/seo/StructuredData.tsx` |
+| Sitemap | `app/sitemap.ts` |
+| Robots | `app/robots.ts` |
+| PWA Manifest | `app/manifest.ts` |
+| Security Headers | `next.config.ts` |
+
+**Rule:** Only add URLs to `sitemap.ts` that return 200. No anchor hash fragments.
+
+---
+
+## 11. TypeScript Standards
+
+```jsonc
+// Required tsconfig settings (both client and server)
+{
+  "strict": true,
+  "noImplicitAny": true,
+  "noImplicitReturns": true,
+  "noFallthroughCasesInSwitch": true
+}
+```
+
+- Never use `as any` — use `unknown` with type guards
+- Never use `!` non-null assertion on external data
+- Prefer `interface` for implementable object shapes
+- Use discriminated unions over optional fields
+
+---
+
+## 12. Code Quality Gates
+
+### CI Requirements (all must pass)
+
+1. ESLint — zero errors
+2. TypeScript — `tsc --noEmit` exits 0
+3. Prettier — `prettier --check` exits 0
+4. Tests — all pass, ≥70% coverage (server)
+5. Build — succeeds
+
+---
+
+## 13. Testing Standards
+
+- Unit tests: mock all external deps (Prisma, Redis, GitHub API)
+- Integration tests: use test database
+- Never test implementation details — test behavior
+- Describe: domain or feature. It: "throws UNAUTHORIZED when token is expired"
+
+---
+
+## 14. DevOps Workflow
+
+### Local Development
+
+```bash
+docker compose up postgres redis -d
+
+# Server
+cd server && npm install && cp .env.example .env
+npm run prisma:migrate && npm run dev  # → localhost:4000
+
+# Client
+cd client && npm install && npm run dev  # → localhost:3000
+```
+
+### Docker
+
+```bash
+docker compose up --build
+docker compose --profile tools up  # + Adminer on :8080
+```
+
+### Branch Strategy
+
+| Branch | Purpose |
+|--------|---------|
+| `main` | Production-ready, protected |
+| `develop` | Integration branch |
+| `feat/*` | New features |
+| `fix/*` | Bug fixes |
+| `chore/*` | Non-functional changes |
+
+### Commit Convention
+
+```
+feat(server): add GitHub OAuth callback handler
+fix(client): correct env sync pill alignment on mobile
+chore(deps): upgrade framer-motion to 12.39
+```
+
+---
+
+## 15. Environment Variables
+
+- All vars validated at startup via Zod (`server/src/config/env.ts`)
+- Missing/invalid vars = process exits with clear error
+- Sensitive vars never logged
+- `.env.example` always up to date with comments
+- Client: only `NEXT_PUBLIC_*` prefix — never put secrets here
+
+---
+
+## 16. Security Standards
+
+- Tokens encrypted AES-256-GCM before storage
+- CORS: explicit allowlist from `ALLOWED_ORIGINS`
+- Rate limiting: 200 req/15min per IP
+- Helmet: all headers in production
+- JWT: HS256, 7-day expiry
+- SQL injection: impossible via Prisma parameterized queries
+- No secrets in git
+
+---
+
+## 17. MVP Constraints
+
+**Frontend:** Next.js, React (Vite/CRA)
+**Backend:** Express.js, Node.js APIs, Fastify
+**Languages:** JavaScript, TypeScript
+**Frontend hosting:** Vercel only
+**Backend hosting:** Render only
+**Auth:** GitHub OAuth only
+
+**DO NOT BUILD:** Kubernetes, Terraform, AWS/GCP/Azure, Docker execution engine, multi-cloud, AI agent frameworks, custom hosting, full CI/CD pipelines, container runtime, serverless orchestration, VMs, auto-scaling.
+
+---
+
+## 18. Observability
+
+```typescript
+logger.info("Deployment started", { deploymentId, userId });
+logger.warn("Cache miss", { key });
+logger.error("External service failed", { service: "GitHub", error: err.message });
+```
+
+Health: `GET /api/v1/health` — used by Docker HEALTHCHECK and monitoring.
+Never log tokens, passwords, or encryption keys.
+
+---
+
+## 19. Performance Guidelines
+
+**Frontend:** `next/image`, `next/font`, `dynamic()` for heavy dashboard components, `viewport={{ once: true }}` on all animations.
+
+**Backend:** Redis cache before expensive DB/API calls, DataLoaders for N+1 risk, `select` to fetch only needed fields.
+
+---
+
+## 20. PR Checklist
+
+- [ ] TypeScript compiles without errors
+- [ ] ESLint passes with zero warnings
+- [ ] Prettier formatting applied
+- [ ] Tests written for new server logic
+- [ ] No `console.log` (use `logger`)
+- [ ] No hardcoded secrets
+- [ ] `.env.example` updated if new env vars added
+- [ ] `CLAUDE.md` updated if architecture decisions changed
+- [ ] Commit messages follow convention
+
+---
+
+## 21. Onboarding (Local Dev Setup)
+
+```bash
+# 1. Clone
+git clone https://github.com/your-org/deplo-ai.git && cd deplo-ai
+
+# 2. Start infrastructure
+docker compose up postgres redis -d
+
+# 3. Server
+cd server && npm install && cp .env.example .env
+# Fill in GitHub OAuth, Vercel, Render credentials
+npm run prisma:migrate && npm run dev  # → localhost:4000
+
+# 4. Client (new terminal)
+cd ../client && npm install && npm run dev  # → localhost:3000
+
+# 5. GraphQL Playground: http://localhost:4000/graphql
+# 6. API Docs (Swagger): http://localhost:4000/docs
+```
+
+---
+
+## 22. Deployment
+
+**Client (Vercel):** Push to `main` → auto-deploys. Set `NEXT_PUBLIC_API_URL` in Vercel env.
+
+**Server (Render):** Push to `main` → auto-deploys. Render manages `DATABASE_URL` and `REDIS_URL`.
+
+---
+
+_Last updated: 2026-05-21_

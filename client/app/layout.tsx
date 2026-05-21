@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { StructuredData } from "@/components/seo/StructuredData";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -122,10 +123,14 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-white text-black">
+      <body
+        className="min-h-full flex flex-col bg-white text-black"
+        suppressHydrationWarning
+      >
         <StructuredData />
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

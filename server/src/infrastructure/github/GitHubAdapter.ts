@@ -1,5 +1,6 @@
 import { AppError } from "../../shared/errors/AppError";
 import { env } from "../../config/env";
+import { logger } from "../../shared/logger/logger";
 
 interface GitHubUserProfile {
   id: number;
@@ -45,13 +46,15 @@ export class GitHubAdapter {
       }),
     });
 
-    if (!res.ok) {
-      throw AppError.externalService("GitHub", "Token exchange failed");
-    }
+    const data = (await res.json()) as GitHubOAuthToken & {
+      error?: string;
+      error_description?: string;
+    };
 
-    const data = (await res.json()) as GitHubOAuthToken & { error?: string };
-    if (data.error) {
-      throw AppError.externalService("GitHub", data.error);
+    if (!res.ok || data.error) {
+      const detail = data.error_description ?? data.error ?? res.statusText;
+      logger.error("GitHub token exchange failed", { status: res.status, detail });
+      throw AppError.externalService("GitHub", detail);
     }
 
     return data.access_token;

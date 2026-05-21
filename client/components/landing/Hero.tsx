@@ -4,6 +4,8 @@ import { motion, useInView } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import { useRef, useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useAuthNavigation } from "@/hooks/useAuthNavigation";
 
 /* ── Shared primitives ── */
 function SparkIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
@@ -112,6 +114,7 @@ function StageCell({ label, value, state }: Stage) {
 
 /* ── Pipeline visualization ── */
 function PipelineViz() {
+  const { isAuthenticated } = useAuth();
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: "-60px" });
 
@@ -182,11 +185,20 @@ function PipelineViz() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-semibold text-black leading-tight">GitHub Repository</p>
-                <p className="text-[10.5px] text-[#94A3B8] font-mono mt-0.5">main · 3f8a2c1</p>
+                <p className="text-[10.5px] text-[#94A3B8] font-mono mt-0.5">
+                  {isAuthenticated ? "Connected · main" : "main · 3f8a2c1"}
+                </p>
               </div>
-              <div className="bg-[#0F0F0F] text-white px-3 py-1 text-[9px] font-bold uppercase tracking-[0.1em] shrink-0">
-                Push
-              </div>
+              {isAuthenticated ? (
+                <div className="flex items-center gap-1 bg-green-50 border border-green-200 text-green-700 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.08em] shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  Connected
+                </div>
+              ) : (
+                <div className="bg-[#0F0F0F] text-white px-3 py-1 text-[9px] font-bold uppercase tracking-[0.1em] shrink-0">
+                  Push
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#F1F5F9] min-w-0">
               <div className="w-2 h-2 rounded-full border-[1.5px] border-[#94A3B8] bg-white shrink-0" />
@@ -326,6 +338,8 @@ const stats = [
 
 /* ── Hero section ── */
 export function Hero() {
+  const { isAuthenticated, launchApp, connectGithub } = useAuthNavigation();
+
   return (
     <section className="relative min-h-screen flex flex-col justify-center pt-14 bg-white overflow-hidden">
       <div
@@ -388,20 +402,26 @@ export function Hero() {
           transition={{ duration: 0.45, delay: 0.42 }}
           className="flex flex-col sm:flex-row items-center gap-3"
         >
-          <a
-            href="#"
+          <button
+            type="button"
+            onClick={launchApp}
             className="flex items-center gap-2 h-11 px-6 bg-black text-white text-[13.5px] font-semibold tracking-[-0.01em] hover:bg-gray-900 transition-colors"
           >
             <SparkIcon size={12} />
-            Launch App
-          </a>
-          <a
-            href="#"
-            className="flex items-center gap-2 h-11 px-6 border border-black/12 bg-white text-black text-[13.5px] font-medium hover:border-black/25 hover:bg-gray-50 transition-colors"
+            {isAuthenticated ? "Go to Dashboard" : "Launch App"}
+          </button>
+          <button
+            type="button"
+            onClick={connectGithub}
+            className={`flex items-center gap-2 h-11 px-6 border text-[13.5px] font-medium transition-colors ${
+              isAuthenticated
+                ? "border-green-200 bg-green-50 text-green-800 hover:border-green-300"
+                : "border-black/12 bg-white text-black hover:border-black/25 hover:bg-gray-50"
+            }`}
           >
             <Image src="/github.png" alt="" width={15} height={15} className="object-contain" />
-            Connect GitHub
-          </a>
+            {isAuthenticated ? "GitHub Connected" : "Connect GitHub"}
+          </button>
           <a
             href="#how-it-works"
             className="flex items-center gap-1.5 h-11 px-4 text-[13px] font-medium text-[#64748B] hover:text-black transition-colors"

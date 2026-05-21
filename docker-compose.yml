@@ -1,0 +1,94 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: deplo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: deplo
+      POSTGRES_PASSWORD: deplo_dev
+      POSTGRES_DB: deplo_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deplo -d deplo_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - deplo-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: deplo-redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - deplo-net
+
+  server:
+    build:
+      context: ./server
+      target: runtime
+    image: deplo-server:latest
+    container_name: deplo-server
+    restart: unless-stopped
+    env_file:
+      - ./server/.env
+    environment:
+      DATABASE_URL: "postgresql://deplo:deplo_dev@postgres:5432/deplo_db"
+      REDIS_URL: "redis://redis:6379"
+      NODE_ENV: "production"
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - deplo-net
+
+  client:
+    build:
+      context: ./client
+    image: deplo-client:latest
+    container_name: deplo-client
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: "http://localhost:4000"
+    networks:
+      - deplo-net
+
+  # ── Dev-only: Adminer for Postgres UI ─────────────────────────────────────
+  adminer:
+    image: adminer:latest
+    container_name: deplo-adminer
+    restart: unless-stopped
+    profiles: ["tools"]
+    ports:
+      - "8080:8080"
+    networks:
+      - deplo-net
+
+networks:
+  deplo-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
