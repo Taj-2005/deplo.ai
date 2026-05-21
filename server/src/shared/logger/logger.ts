@@ -1,5 +1,4 @@
 import winston from "winston";
-import DailyRotateFile from "winston-daily-rotate-file";
 import { env } from "../../config/env";
 
 const { combine, timestamp, errors, json, colorize, printf } = winston.format;
@@ -16,29 +15,13 @@ const devFormat = combine(
 
 const prodFormat = combine(timestamp(), errors({ stack: true }), json());
 
+// Production logs go to stdout — Render/Docker capture them in the dashboard.
+// File rotation requires a writable logs/ dir; the container runs as non-root `node`.
 const transports: winston.transport[] = [
   new winston.transports.Console({
     format: env.NODE_ENV === "production" ? prodFormat : devFormat,
   }),
 ];
-
-if (env.NODE_ENV === "production") {
-  transports.push(
-    new DailyRotateFile({
-      filename: "logs/error-%DATE%.log",
-      datePattern: "YYYY-MM-DD",
-      level: "error",
-      maxFiles: "30d",
-      format: prodFormat,
-    }),
-    new DailyRotateFile({
-      filename: "logs/combined-%DATE%.log",
-      datePattern: "YYYY-MM-DD",
-      maxFiles: "14d",
-      format: prodFormat,
-    }),
-  );
-}
 
 export const logger = winston.createLogger({
   level: env.LOG_LEVEL,

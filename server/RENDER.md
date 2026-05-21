@@ -62,6 +62,12 @@ RENDER_API_KEY=...
 
 Path: `/api/v1/health`
 
+## Logs
+
+No registry setup needed — Render builds and hosts the image automatically.
+
+Application logs are written to **stdout** (view in Render → Logs). Do not enable file logging in the container.
+
 ## After deploy
 
 Set on Vercel (frontend):
