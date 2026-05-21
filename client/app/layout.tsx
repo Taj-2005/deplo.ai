@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { StructuredData } from "@/components/seo/StructuredData";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,32 +15,101 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#000000",
+  colorScheme: "light",
+};
+
 export const metadata: Metadata = {
-  title: "deplo.ai — AI-Powered Deployment Orchestration",
+  metadataBase: new URL("https://deplo.ai.taj.works"),
+
+  title: {
+    default: "deplo.ai — AI-Powered Deployment Orchestration",
+    template: "%s | deplo.ai",
+  },
+
   description:
-    "Connect your GitHub repo. deplo.ai detects your stack, deploys frontend to Vercel, backend to Render, syncs environment variables, and returns production-ready URLs automatically.",
-  keywords:
-    "deployment automation, AI DevOps, GitHub deployment, Vercel, Render, fullstack deployment, CI/CD",
-  icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/logo.png", type: "image/png" },
-    ],
-    apple: "/logo.png",
-    shortcut: "/favicon.ico",
+    "Connect your GitHub repo and get production-ready URLs in under 3 minutes. deplo.ai detects your stack, deploys frontend to Vercel and backend to Render, and syncs environment variables automatically — no DevOps expertise required.",
+
+  keywords: [
+    "AI deployment platform",
+    "AI DevOps platform",
+    "GitHub deployment automation",
+    "deploy apps without DevOps",
+    "Vercel Render deployment",
+    "automatic app deployment",
+    "frontend backend deployment automation",
+    "deployment orchestration platform",
+    "developer infrastructure tools",
+    "deployment pipeline automation",
+    "fullstack deployment",
+    "zero config deployment",
+    "GitHub to production",
+    "indie hacker tools",
+    "startup deployment",
+  ],
+
+  authors: [{ name: "deplo.ai", url: "https://deplo.ai.taj.works" }],
+  creator: "deplo.ai",
+  publisher: "deplo.ai",
+  applicationName: "deplo.ai",
+  category: "Developer Tools",
+
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
+
   openGraph: {
-    title: "deplo.ai — Code goes in. Production URL comes out.",
-    description:
-      "AI-powered deployment orchestration. Connect GitHub, get production URLs.",
     type: "website",
-    images: [{ url: "/logo.png", width: 512, height: 512, alt: "deplo.ai" }],
+    url: "https://deplo.ai.taj.works",
+    siteName: "deplo.ai",
+    title: "Code goes in. Production URL comes out.",
+    description:
+      "deplo.ai connects your GitHub repo, detects your stack, deploys frontend to Vercel and backend to Render, syncs environment variables — and returns production-ready URLs in under 3 minutes.",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "deplo.ai — AI-Powered Deployment Orchestration",
+        type: "image/png",
+      },
+    ],
   },
+
   twitter: {
     card: "summary_large_image",
+    site: "@deploai",
+    creator: "@deploai",
     title: "deplo.ai — AI-Powered Deployment Orchestration",
-    description: "Connect GitHub. Get production URLs.",
-    images: ["/logo.png"],
+    description:
+      "Connect GitHub. Get production URLs. deplo.ai deploys frontend to Vercel and backend to Render automatically — zero DevOps needed.",
+    images: ["/og.png"],
+  },
+
+  alternates: {
+    canonical: "https://deplo.ai.taj.works",
+  },
+
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/favicon.ico",
+  },
+
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "deplo.ai",
   },
 };
 
@@ -54,6 +124,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-white text-black">
+        <StructuredData />
         {children}
       </body>
     </html>
