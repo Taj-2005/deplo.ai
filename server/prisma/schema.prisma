@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String       @id @default(cuid())
+  email             String       @unique
+  name              String
+  avatarUrl         String?
+  githubId          String       @unique
+  githubLogin       String       @unique
+  githubAccessToken String
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  repositories Repository[]
+  deployments  Deployment[]
+
+  @@index([githubId])
+  @@index([email])
+}
+
+model Repository {
+  id            String  @id @default(cuid())
+  userId        String
+  githubRepoId  String  @unique
+  name          String
+  fullName      String
+  htmlUrl       String
+  cloneUrl      String
+  defaultBranch String  @default("main")
+  isPrivate     Boolean @default(false)
+  language      String?
+  description   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deployments Deployment[]
+
+  @@index([userId])
+  @@index([githubRepoId])
+}
+
+model Deployment {
+  id             String           @id @default(cuid())
+  userId         String
+  repositoryId   String
+  status         DeploymentStatus @default(PENDING)
+  detectedStack  Json?
+  envVariables   Json             @default("[]")
+  frontendUrl    String?
+  backendUrl     String?
+  logs           Json             @default("[]")
+  vercelProjectId String?
+  renderServiceId String?
+  error          String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([repositoryId])
+  @@index([status])
+}
+
+enum DeploymentStatus {
+  PENDING
+  ANALYZING
+  WAITING_FOR_ENV
+  DEPLOYING_BACKEND
+  BACKEND_READY
+  DEPLOYING_FRONTEND
+  COMPLETED
+  FAILED
+  CANCELLED
+}
