@@ -41,8 +41,10 @@ const envSchema = z.object({
 const _parsed = envSchema.safeParse(process.env);
 
 if (!_parsed.success) {
+  /* eslint-disable no-console -- env bootstrap runs before logger is available */
   console.error("❌  Invalid environment variables:");
   console.error(JSON.stringify(_parsed.error.flatten().fieldErrors, null, 2));
+  /* eslint-enable no-console */
   process.exit(1);
 }
 

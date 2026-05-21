@@ -66,15 +66,18 @@ export class RenderAdapter {
     if (!env.RENDER_API_KEY) {
       throw AppError.externalService("Render", "RENDER_API_KEY not configured");
     }
-    const res = await fetch(`${this.apiBase}${path}`, {
+    const init: RequestInit = {
       method,
       headers: {
         Authorization: `Bearer ${env.RENDER_API_KEY}`,
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
+    };
+    if (body !== undefined) {
+      init.body = JSON.stringify(body);
+    }
+    const res = await fetch(`${this.apiBase}${path}`, init);
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");

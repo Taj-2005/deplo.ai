@@ -4,7 +4,6 @@ import {
   createContext,
   useContext,
   useState,
-  useEffect,
   useCallback,
 } from "react";
 import {
@@ -32,18 +31,18 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+function readUserFromStorage(): AuthUser | null {
+  if (typeof window === "undefined") return null;
+  const token = getToken();
+  if (!token || !isTokenValid(token)) return null;
+  const decoded = decodeToken(token);
+  if (!decoded) return null;
+  return { id: decoded.sub, email: decoded.email };
+}
 
-  useEffect(() => {
-    const token = getToken();
-    if (token && isTokenValid(token)) {
-      const decoded = decodeToken(token);
-      if (decoded) setUser({ id: decoded.sub, email: decoded.email });
-    }
-    setIsLoading(false);
-  }, []);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<AuthUser | null>(readUserFromStorage);
+  const [isLoading] = useState(false);
 
   const signIn = useCallback(() => {
     window.location.href = getGithubAuthUrl();

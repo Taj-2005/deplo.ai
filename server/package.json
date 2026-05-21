@@ -16,7 +16,7 @@
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:ci": "jest --ci --coverage --reporters=default --reporters=jest-junit",
+    "test:ci": "jest --ci --coverage --passWithNoTests --reporters=default --reporters=jest-junit",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",

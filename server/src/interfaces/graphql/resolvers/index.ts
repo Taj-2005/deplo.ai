@@ -2,7 +2,7 @@ import { DateTimeResolver, JSONResolver } from "graphql-scalars";
 import type { GraphQLContext } from "../context/context";
 import { AppError } from "../../../shared/errors/AppError";
 
-function requireAuth(ctx: GraphQLContext) {
+function requireAuth(ctx: GraphQLContext): NonNullable<GraphQLContext["currentUser"]> {
   if (!ctx.currentUser) throw AppError.unauthorized();
   return ctx.currentUser;
 }

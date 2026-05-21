@@ -62,14 +62,17 @@ export class VercelAdapter {
       throw AppError.externalService("Vercel", "VERCEL_TOKEN not configured");
     }
     const teamSuffix = env.VERCEL_TEAM_ID ? `?teamId=${env.VERCEL_TEAM_ID}` : "";
-    const res = await fetch(`${this.apiBase}${path}${teamSuffix}`, {
+    const init: RequestInit = {
       method,
       headers: {
         Authorization: `Bearer ${env.VERCEL_TOKEN}`,
         "Content-Type": "application/json",
       },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
+    };
+    if (body !== undefined) {
+      init.body = JSON.stringify(body);
+    }
+    const res = await fetch(`${this.apiBase}${path}${teamSuffix}`, init);
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
