@@ -10,11 +10,13 @@ export interface RenderService {
   type: string;
   serviceDetails: {
     url: string | null;
-    buildCommand: string;
-    startCommand: string;
     env: string;
     region: string;
     plan: string;
+    envSpecificDetails?: {
+      buildCommand: string;
+      startCommand: string;
+    };
   };
   state: "live" | "failed" | "build_failed" | "suspended" | "not_suspended" | "in_progress";
 }
@@ -63,8 +65,10 @@ export class RenderAdapter {
         env: "node",
         region: "oregon",
         plan: params.plan ?? "starter",
-        buildCommand: params.buildCommand,
-        startCommand: params.startCommand,
+        envSpecificDetails: {
+          buildCommand: params.buildCommand,
+          startCommand: params.startCommand,
+        },
         envVars: params.envVars.map((v) => ({ key: v.key, value: v.value })),
         ...(params.rootDir ? { rootDir: params.rootDir } : {}),
       },

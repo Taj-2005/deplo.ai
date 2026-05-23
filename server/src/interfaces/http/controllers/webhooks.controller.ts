@@ -2,7 +2,6 @@ import type { Request, Response } from "express";
 import type { IDeploymentRepository } from "../../../domain/deployment/DeploymentRepository.interface";
 import type { Queue } from "bullmq";
 import type { DeploymentJobData, DeploymentJobName } from "../../../infrastructure/queue/DeploymentQueue";
-import { enqueueDeploy } from "../../../infrastructure/queue/DeploymentQueue";
 import { env } from "../../../config/env";
 import { logger } from "../../../shared/logger/logger";
 import crypto from "crypto";

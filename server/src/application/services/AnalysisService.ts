@@ -113,8 +113,7 @@ export class AnalysisService {
 
     // 1. List root directory
     const rootEntries = await this.github.listDirectory(token, fullName, "");
-    const rootFileNames = rootEntries.filter((e) => e.type === "file").map((e) => e.name);
-    const rootDirNames  = rootEntries.filter((e) => e.type === "dir").map((e) => e.name);
+    const rootDirNames = rootEntries.filter((e) => e.type === "dir").map((e) => e.name);
 
     // 2. Try root as a single-app first
     const rootAnalysis = await analyzeDir(this.github, token, fullName, "");
