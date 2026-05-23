@@ -91,14 +91,65 @@ export class GitHubAdapter {
     path: string,
   ): Promise<string | null> {
     try {
-      const data = await this.request<{
-        content: string;
-        encoding: string;
-      }>(`/repos/${fullName}/contents/${path}`, accessToken);
+      const data = await this.request<{ content: string; encoding: string }>(
+        `/repos/${fullName}/contents/${path}`,
+        accessToken,
+      );
       return Buffer.from(data.content, "base64").toString("utf8");
     } catch {
       return null;
     }
+  }
+
+  /** List entries in a directory (returns [] on error). */
+  async listDirectory(
+    accessToken: string,
+    fullName: string,
+    path: string,
+  ): Promise<Array<{ name: string; type: "file" | "dir" }>> {
+    try {
+      const entries = await this.request<Array<{ name: string; type: string }>>(
+        `/repos/${fullName}/contents/${path}`,
+        accessToken,
+      );
+      return entries
+        .filter((e) => e.type === "file" || e.type === "dir")
+        .map((e) => ({ name: e.name, type: e.type as "file" | "dir" }));
+    } catch {
+      return [];
+    }
+  }
+
+  /** Get the flat recursive file tree for a ref. Truncated trees fall back gracefully. */
+  async getRepoTree(
+    accessToken: string,
+    fullName: string,
+    ref: string,
+  ): Promise<Array<{ path: string; sha: string; size: number }>> {
+    try {
+      const data = await this.request<{
+        tree: Array<{ path: string; type: string; sha: string; size?: number }>;
+        truncated: boolean;
+      }>(`/repos/${fullName}/git/trees/${ref}?recursive=1`, accessToken);
+      return data.tree
+        .filter((e) => e.type === "blob")
+        .map((e) => ({ path: e.path, sha: e.sha, size: e.size ?? 0 }));
+    } catch {
+      return [];
+    }
+  }
+
+  /** Download a blob by its SHA as a Buffer. */
+  async getBlob(
+    accessToken: string,
+    fullName: string,
+    sha: string,
+  ): Promise<Buffer> {
+    const data = await this.request<{ content: string; encoding: string }>(
+      `/repos/${fullName}/git/blobs/${sha}`,
+      accessToken,
+    );
+    return Buffer.from(data.content, "base64");
   }
 
   private async request<T>(path: string, token: string): Promise<T> {

@@ -16,14 +16,18 @@ export class DeploymentRepository implements IDeploymentRepository {
     userId: string;
     repositoryId: string;
     status: string;
+    branch: string;
     detectedStack: unknown;
     envVariables: unknown;
     frontendUrl: string | null;
     backendUrl: string | null;
     logs: unknown;
     vercelProjectId: string | null;
+    vercelDeployId: string | null;
     renderServiceId: string | null;
+    renderDeployId: string | null;
     error: string | null;
+    completedAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
   }): Deployment {
@@ -57,11 +61,26 @@ export class DeploymentRepository implements IDeploymentRepository {
     return rows.map((r) => this.mapRow(r));
   }
 
+  async findByVercelDeployId(vercelDeployId: string): Promise<Deployment | null> {
+    const row = await this.prisma.deployment.findFirst({
+      where: { vercelDeployId },
+    });
+    return row ? this.mapRow(row) : null;
+  }
+
+  async findByRenderServiceId(renderServiceId: string): Promise<Deployment | null> {
+    const row = await this.prisma.deployment.findFirst({
+      where: { renderServiceId },
+    });
+    return row ? this.mapRow(row) : null;
+  }
+
   async create(input: CreateDeploymentInput): Promise<Deployment> {
     const row = await this.prisma.deployment.create({
       data: {
         userId: input.userId,
         repositoryId: input.repositoryId,
+        branch: input.branch,
         status: "PENDING",
         envVariables: [],
         logs: [],
@@ -74,6 +93,7 @@ export class DeploymentRepository implements IDeploymentRepository {
     const data: Prisma.DeploymentUpdateInput = {};
 
     if (input.status !== undefined) data.status = input.status;
+    if (input.branch !== undefined) data.branch = input.branch;
     if (input.detectedStack !== undefined) {
       data.detectedStack = input.detectedStack as unknown as Prisma.InputJsonValue;
     }
@@ -86,13 +106,13 @@ export class DeploymentRepository implements IDeploymentRepository {
       data.logs = input.logs as unknown as Prisma.InputJsonValue;
     }
     if (input.vercelProjectId !== undefined) data.vercelProjectId = input.vercelProjectId;
+    if (input.vercelDeployId !== undefined) data.vercelDeployId = input.vercelDeployId;
     if (input.renderServiceId !== undefined) data.renderServiceId = input.renderServiceId;
+    if (input.renderDeployId !== undefined) data.renderDeployId = input.renderDeployId;
     if (input.error !== undefined) data.error = input.error;
+    if (input.completedAt !== undefined) data.completedAt = input.completedAt;
 
-    const row = await this.prisma.deployment.update({
-      where: { id },
-      data,
-    });
+    const row = await this.prisma.deployment.update({ where: { id }, data });
     return this.mapRow(row);
   }
 

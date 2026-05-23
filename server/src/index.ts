@@ -1,6 +1,7 @@
 import { env } from "./config/env";
 import { logger } from "./shared/logger/logger";
 import { PrismaClient } from "@prisma/client";
+import Redis from "ioredis";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -15,161 +16,205 @@ import { buildContext } from "./interfaces/graphql/context/context";
 import { errorMiddleware } from "./interfaces/http/middleware/error.middleware";
 import { setupSwagger } from "./interfaces/swagger/swagger";
 
+// ── Repositories ──────────────────────────────────────────────────────────────
 import { UserRepository } from "./infrastructure/database/repositories/UserRepository";
 import { DeploymentRepository } from "./infrastructure/database/repositories/DeploymentRepository";
-import { getRedisClient, closeRedisClient } from "./infrastructure/redis/RedisClient";
+import { RepositoryRepository } from "./infrastructure/database/repositories/RepositoryRepository";
+
+// ── Infrastructure ────────────────────────────────────────────────────────────
 import { CacheService } from "./infrastructure/redis/CacheService";
 import { GitHubAdapter } from "./infrastructure/github/GitHubAdapter";
 import { VercelAdapter } from "./infrastructure/vercel/VercelAdapter";
 import { RenderAdapter } from "./infrastructure/render/RenderAdapter";
+import { getDeploymentQueue } from "./infrastructure/queue/DeploymentQueue";
+import { createDeploymentWorker } from "./infrastructure/queue/DeploymentWorker";
+
+// ── Application Services ──────────────────────────────────────────────────────
 import { AuthService } from "./application/services/AuthService";
 import { AnalysisService } from "./application/services/AnalysisService";
 import { DeploymentService } from "./application/services/DeploymentService";
+import { RepositoryService } from "./application/services/RepositoryService";
+import { DeploymentOrchestrator } from "./application/orchestration/DeploymentOrchestrator";
+
+// ── HTTP Controllers ──────────────────────────────────────────────────────────
 import { AuthController } from "./interfaces/http/controllers/auth.controller";
 import { HealthController } from "./interfaces/http/controllers/health.controller";
+import { ReposController } from "./interfaces/http/controllers/repos.controller";
+import { DeploymentsController } from "./interfaces/http/controllers/deployments.controller";
+import { StatsController } from "./interfaces/http/controllers/stats.controller";
+import { WebhooksController } from "./interfaces/http/controllers/webhooks.controller";
 import { createAuthMiddleware } from "./interfaces/http/middleware/auth.middleware";
 import { asyncHandler } from "./shared/utils/asyncHandler";
 
 async function bootstrap(): Promise<void> {
-  // ── Infrastructure ───────────────────────────────────────────────────────
+  // ── Database ─────────────────────────────────────────────────────────────
   const prisma = new PrismaClient({ log: env.NODE_ENV === "development" ? ["query"] : [] });
   await prisma.$connect();
   logger.info("Database connected");
 
-  const redis = getRedisClient();
-  const cache = new CacheService(redis);
+  // ── Redis ─────────────────────────────────────────────────────────────────
+  // Two separate connections: cache (normal) and BullMQ worker (maxRetriesPerRequest: null)
+  const cacheRedis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 3 });
+  const workerRedis = new Redis(env.REDIS_URL, {
+    maxRetriesPerRequest: null, // required by BullMQ
+    enableReadyCheck: false,
+  });
+  cacheRedis.on("connect", () => logger.info("Redis: connected"));
+  cacheRedis.on("error", (err: Error) => logger.error("Redis error", { error: err.message }));
+  logger.info("Redis clients initialised");
 
-  // ── Repositories ─────────────────────────────────────────────────────────
+  const cache = new CacheService(cacheRedis);
+
+  // ── Domain repositories ───────────────────────────────────────────────────
   const userRepository = new UserRepository(prisma);
   const deploymentRepository = new DeploymentRepository(prisma);
+  const repositoryRepository = new RepositoryRepository(prisma);
 
-  // ── External Adapters ────────────────────────────────────────────────────
+  // ── External adapters ─────────────────────────────────────────────────────
   const github = new GitHubAdapter();
   const vercel = new VercelAdapter();
   const render = new RenderAdapter();
 
-  // ── Application Services ─────────────────────────────────────────────────
-  const authService = new AuthService(userRepository, github);
+  // ── Application services ──────────────────────────────────────────────────
+  const repositoryService = new RepositoryService(repositoryRepository, github, cache);
+  const authService = new AuthService(userRepository, repositoryRepository, github, cache);
   const analysisService = new AnalysisService(github);
 
-  const repositoryRepository = {
-    findById: (id: string) => prisma.repository.findUnique({ where: { id } }),
-    findByGithubRepoId: (githubRepoId: string) =>
-      prisma.repository.findUnique({ where: { githubRepoId } }),
-    findByUserId: (userId: string) =>
-      prisma.repository.findMany({ where: { userId } }),
-    upsert: (data: Parameters<typeof prisma.repository.upsert>[0]["create"]) =>
-      prisma.repository.upsert({
-        where: { githubRepoId: (data as { githubRepoId: string }).githubRepoId },
-        create: data,
-        update: data,
-      }),
-  };
+  // ── BullMQ queue + orchestrator ───────────────────────────────────────────
+  const deploymentQueue = getDeploymentQueue(workerRedis);
 
   const deploymentService = new DeploymentService(
     deploymentRepository,
     userRepository,
     repositoryRepository,
-    analysisService,
-    vercel,
-    render,
+    deploymentQueue,
     cache,
   );
 
-  const services = {
-    prisma,
-    userRepository,
+  const orchestrator = new DeploymentOrchestrator(
     deploymentRepository,
-    authService,
-    deploymentService,
-    cache,
-  };
+    repositoryRepository,
+    userRepository,
+    analysisService,
+    vercel,
+    render,
+    github,
+  );
 
-  // ── Express App ──────────────────────────────────────────────────────────
+  const worker = createDeploymentWorker(workerRedis, orchestrator);
+  logger.info("Deployment worker started");
+
+  // ── Express app ───────────────────────────────────────────────────────────
   const app = express();
 
   app.set("trust proxy", 1);
   app.use(helmet());
   app.use(compression());
-  app.use(
-    cors({
-      origin: env.ALLOWED_ORIGINS,
-      credentials: true,
-    }),
-  );
+  app.use(cors({ origin: env.ALLOWED_ORIGINS, credentials: true }));
   app.use(express.json({ limit: "1mb" }));
 
   const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
+    windowMs: 15 * 60 * 1_000,
     max: 200,
     standardHeaders: true,
     legacyHeaders: false,
   });
   app.use(limiter);
 
-  // ── GraphQL ──────────────────────────────────────────────────────────────
+  // ── GraphQL ───────────────────────────────────────────────────────────────
   const apollo = new ApolloServer({ typeDefs, resolvers });
   await apollo.start();
+
+  const graphqlServices = {
+    prisma,
+    userRepository,
+    deploymentRepository,
+    authService,
+    deploymentService,
+    repositoryService,
+    cache,
+  };
 
   app.use(
     "/graphql",
     expressMiddleware(apollo, {
-      context: async ({ req }) => buildContext(req, services),
+      context: async ({ req }) => buildContext(req, graphqlServices),
     }),
   );
 
-  // ── REST Routes ──────────────────────────────────────────────────────────
-  const apiRouter = express.Router();
-  const authController = new AuthController(authService);
-  const healthController = new HealthController(prisma, redis);
+  // ── REST API ──────────────────────────────────────────────────────────────
+  const api = express.Router();
   const authMiddleware = createAuthMiddleware(authService);
 
-  apiRouter.get("/health", asyncHandler(healthController.check));
-  apiRouter.get("/auth/github", authController.getGithubOAuthUrl);
-  apiRouter.get(
-    "/auth/github/callback",
-    asyncHandler(authController.handleGithubCallback),
+  const authController = new AuthController(authService);
+  const healthController = new HealthController(prisma, cacheRedis);
+  const reposController = new ReposController(repositoryService, userRepository);
+  const deploymentsController = new DeploymentsController(
+    deploymentService,
+    deploymentRepository,
+    prisma,
   );
-  apiRouter.get(
-    "/auth/me",
-    authMiddleware,
-    asyncHandler(authController.getCurrentUser),
-  );
+  const statsController = new StatsController(prisma);
+  const webhooksController = new WebhooksController(deploymentRepository, deploymentQueue);
 
-  app.use(`/api/${env.API_VERSION}`, apiRouter);
+  // Public
+  api.get("/health", asyncHandler(healthController.check));
+  api.get("/auth/github", authController.getGithubOAuthUrl);
+  api.get("/auth/github/callback", asyncHandler(authController.handleGithubCallback));
 
-  // ── Swagger ──────────────────────────────────────────────────────────────
+  // Webhooks (no user auth — signature validation is done inside controllers)
+  api.post("/webhooks/vercel", asyncHandler(webhooksController.vercel));
+  api.post("/webhooks/render", asyncHandler(webhooksController.render));
+
+  // Protected
+  api.use(authMiddleware);
+  api.get("/auth/me", asyncHandler(authController.getCurrentUser));
+
+  api.get("/repos", asyncHandler(reposController.list));
+  api.post("/repos/sync", asyncHandler(reposController.sync));
+
+  api.get("/deployments", asyncHandler(deploymentsController.list));
+  api.post("/deployments", asyncHandler(deploymentsController.start));
+  api.get("/deployments/:id", asyncHandler(deploymentsController.get));
+  api.post("/deployments/:id/env", asyncHandler(deploymentsController.provideEnv));
+  api.delete("/deployments/:id", asyncHandler(deploymentsController.cancel));
+
+  api.get("/stats", asyncHandler(statsController.get));
+
+  app.use(`/api/${env.API_VERSION}`, api);
+
+  // ── Swagger ───────────────────────────────────────────────────────────────
   setupSwagger(app);
 
-  // ── Error Handler ────────────────────────────────────────────────────────
+  // ── Error handler ─────────────────────────────────────────────────────────
   app.use(errorMiddleware);
 
-  // ── Start ────────────────────────────────────────────────────────────────
+  // ── Start ─────────────────────────────────────────────────────────────────
   const server = app.listen(env.PORT, () => {
-    logger.info(`🚀 Server running on http://localhost:${env.PORT}`);
-    logger.info(`📊 GraphQL: http://localhost:${env.PORT}/graphql`);
-    logger.info(`📖 API Docs: http://localhost:${env.PORT}/docs`);
+    logger.info(`Server running on http://localhost:${env.PORT}`);
+    logger.info(`GraphQL:  http://localhost:${env.PORT}/graphql`);
+    logger.info(`REST:     http://localhost:${env.PORT}/api/${env.API_VERSION}`);
+    logger.info(`API Docs: http://localhost:${env.PORT}/docs`);
   });
 
-  // ── Graceful Shutdown ────────────────────────────────────────────────────
+  // ── Graceful shutdown ─────────────────────────────────────────────────────
   const shutdown = async (signal: string): Promise<void> => {
     logger.info(`${signal} received — shutting down gracefully`);
     server.close(() => {
       void (async () => {
+        await worker.close();
+        await deploymentQueue.close();
         await prisma.$disconnect();
-        await closeRedisClient();
+        await cacheRedis.quit();
+        await workerRedis.quit();
         logger.info("Server closed");
         process.exit(0);
       })();
     });
   };
 
-  process.on("SIGTERM", () => {
-    void shutdown("SIGTERM");
-  });
-  process.on("SIGINT", () => {
-    void shutdown("SIGINT");
-  });
+  process.on("SIGTERM", () => void shutdown("SIGTERM"));
+  process.on("SIGINT", () => void shutdown("SIGINT"));
 }
 
 bootstrap().catch((err: unknown) => {

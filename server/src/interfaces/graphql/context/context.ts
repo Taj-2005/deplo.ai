@@ -4,6 +4,7 @@ import type { IUserRepository } from "../../../domain/user/UserRepository.interf
 import type { IDeploymentRepository } from "../../../domain/deployment/DeploymentRepository.interface";
 import type { AuthService } from "../../../application/services/AuthService";
 import type { DeploymentService } from "../../../application/services/DeploymentService";
+import type { RepositoryService } from "../../../application/services/RepositoryService";
 import type { CacheService } from "../../../infrastructure/redis/CacheService";
 import type { User } from "../../../domain/user/User";
 
@@ -13,6 +14,7 @@ export interface GraphQLContext {
   deploymentRepository: IDeploymentRepository;
   authService: AuthService;
   deploymentService: DeploymentService;
+  repositoryService: RepositoryService;
   cache: CacheService;
   currentUser: User | null;
 }
