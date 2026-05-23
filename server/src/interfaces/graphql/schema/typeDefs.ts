@@ -24,6 +24,7 @@ export const typeDefs = gql`
     isPrivate: Boolean!
     language: String
     description: String
+    updatedAt: DateTime!
     createdAt: DateTime!
     deployments: [Deployment!]!
   }
@@ -37,22 +38,22 @@ export const typeDefs = gql`
     nodeVersion: String
   }
 
-  type EnvVariable {
+  type EnvVariableInfo {
     key: String!
-    value: String!
     isRequired: Boolean!
-    source: String!
   }
 
   type Deployment {
     id: ID!
     status: DeploymentStatus!
+    branch: String!
     detectedStack: DetectedStack
-    envVariables: [EnvVariable!]!
+    envVariables: [EnvVariableInfo!]!
     frontendUrl: String
     backendUrl: String
     logs: [String!]!
     error: String
+    duration: Int
     createdAt: DateTime!
     updatedAt: DateTime!
     repository: Repository!
@@ -74,6 +75,10 @@ export const typeDefs = gql`
   type AuthPayload {
     token: String!
     user: User!
+  }
+
+  type SyncResult {
+    synced: Int!
   }
 
   input EnvVariableInput {
@@ -99,6 +104,7 @@ export const typeDefs = gql`
 
   type Mutation {
     githubLogin(code: String!): AuthPayload!
+    syncRepositories: SyncResult!
     startDeployment(input: StartDeploymentInput!): Deployment!
     provideEnvVariables(input: ProvideEnvVarsInput!): Deployment!
     cancelDeployment(id: ID!): Deployment!

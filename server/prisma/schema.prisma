@@ -50,18 +50,22 @@ model Repository {
 }
 
 model Deployment {
-  id             String           @id @default(cuid())
-  userId         String
-  repositoryId   String
-  status         DeploymentStatus @default(PENDING)
-  detectedStack  Json?
-  envVariables   Json             @default("[]")
-  frontendUrl    String?
-  backendUrl     String?
-  logs           Json             @default("[]")
+  id              String           @id @default(cuid())
+  userId          String
+  repositoryId    String
+  status          DeploymentStatus @default(PENDING)
+  branch          String           @default("main")
+  detectedStack   Json?
+  envVariables    Json             @default("[]")
+  frontendUrl     String?
+  backendUrl      String?
+  logs            Json             @default("[]")
   vercelProjectId String?
   renderServiceId String?
-  error          String?
+  renderDeployId  String?
+  vercelDeployId  String?
+  error           String?
+  completedAt     DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

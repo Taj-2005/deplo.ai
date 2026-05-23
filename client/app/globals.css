@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
+/* Class-based dark mode strategy */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
+  /* ── Landing page tokens ─────────────────── */
   --background: #ffffff;
   --foreground: #000000;
   --muted: #64748b;
@@ -10,6 +14,40 @@
   --accent-violet: #7928ca;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* ── Dashboard design tokens — light ────── */
+  --ds-bg:               #f6fafe;
+  --ds-surface:          #ffffff;
+  --ds-surface-low:      #f0f4f8;
+  --ds-surface-mid:      #eaeef2;
+  --ds-surface-high:     #e4e9ed;
+  --ds-surface-highest:  #dfe3e7;
+  --ds-on-surface:       #171c1f;
+  --ds-on-variant:       #4c4546;
+  --ds-outline:          #7e7576;
+  --ds-outline-variant:  #cfc4c5;
+  --ds-primary:          #000000;
+  --ds-on-primary:       #ffffff;
+  --ds-primary-dim:      #1b1b1b;
+  --ds-on-primary-dim:   #848484;
+}
+
+.dark {
+  /* ── Dashboard design tokens — dark ─────── */
+  --ds-bg:               #0a0a0a;
+  --ds-surface:          #111111;
+  --ds-surface-low:      #0d0d0d;
+  --ds-surface-mid:      #161616;
+  --ds-surface-high:     #1a1a1a;
+  --ds-surface-highest:  #222222;
+  --ds-on-surface:       #ededed;
+  --ds-on-variant:       #777777;
+  --ds-outline:          #3a3a3a;
+  --ds-outline-variant:  #1f1f1f;
+  --ds-primary:          #ffffff;
+  --ds-on-primary:       #000000;
+  --ds-primary-dim:      #1a1a1a;
+  --ds-on-primary-dim:   #666666;
 }
 
 @theme inline {
@@ -17,6 +55,22 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Dashboard semantic tokens */
+  --color-ds-bg:              var(--ds-bg);
+  --color-ds-surface:         var(--ds-surface);
+  --color-ds-surface-low:     var(--ds-surface-low);
+  --color-ds-surface-mid:     var(--ds-surface-mid);
+  --color-ds-surface-high:    var(--ds-surface-high);
+  --color-ds-surface-highest: var(--ds-surface-highest);
+  --color-ds-on-surface:      var(--ds-on-surface);
+  --color-ds-on-variant:      var(--ds-on-variant);
+  --color-ds-outline:         var(--ds-outline);
+  --color-ds-outline-variant: var(--ds-outline-variant);
+  --color-ds-primary:         var(--ds-primary);
+  --color-ds-on-primary:      var(--ds-on-primary);
+  --color-ds-primary-dim:     var(--ds-primary-dim);
+  --color-ds-on-primary-dim:  var(--ds-on-primary-dim);
 }
 
 *,
@@ -26,31 +80,38 @@
 }
 
 html {
+  background: var(--ds-bg);
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background: #ffffff;
-  color: #000000;
+  background: var(--ds-bg);
+  color: var(--ds-on-surface);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   line-height: 1.5;
 }
 
-/* Premium scrollbar */
+/* Scrollbar */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
-  border-radius: 2px;
+  background: var(--ds-outline-variant);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #cbd5e1;
+  background: var(--ds-outline);
+}
+
+/* Dashboard dot-grid background — respects dark/light tokens */
+.ds-dotgrid {
+  background-color: var(--ds-bg);
+  background-image: radial-gradient(var(--ds-outline-variant) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 /* Flow dot animation */

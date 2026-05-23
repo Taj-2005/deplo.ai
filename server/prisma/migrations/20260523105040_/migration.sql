@@ -41,6 +41,7 @@ CREATE TABLE "Deployment" (
     "userId" TEXT NOT NULL,
     "repositoryId" TEXT NOT NULL,
     "status" "DeploymentStatus" NOT NULL DEFAULT 'PENDING',
+    "branch" TEXT NOT NULL DEFAULT 'main',
     "detectedStack" JSONB,
     "envVariables" JSONB NOT NULL DEFAULT '[]',
     "frontendUrl" TEXT,
@@ -48,7 +49,10 @@ CREATE TABLE "Deployment" (
     "logs" JSONB NOT NULL DEFAULT '[]',
     "vercelProjectId" TEXT,
     "renderServiceId" TEXT,
+    "renderDeployId" TEXT,
+    "vercelDeployId" TEXT,
     "error" TEXT,
+    "completedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
