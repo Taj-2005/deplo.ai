@@ -175,9 +175,9 @@ export default function RepositoriesPage() {
   async function handleImport(repo: Repository) {
     setImportStates((s) => ({ ...s, [repo.id]: "importing" }));
     try {
-      await initiateDeployment(repo.id);
+      const { deploymentId } = await initiateDeployment(repo.id);
       setImportStates((s) => ({ ...s, [repo.id]: "done" }));
-      setTimeout(() => router.push("/dashboard/deployments"), 1400);
+      setTimeout(() => router.push(`/dashboard/deployments/${deploymentId}`), 1000);
     } catch {
       setImportStates((s) => ({ ...s, [repo.id]: "idle" }));
     }

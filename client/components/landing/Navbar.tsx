@@ -7,6 +7,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { APP_ENABLED } from "@/lib/flags";
 
 const navLinks = [
   { href: "#features", label: "Features" },
@@ -88,30 +89,38 @@ export function Navbar() {
 
             {/* Desktop CTAs */}
             <div className="hidden md:flex items-center gap-3">
-              {!isLoading && (
-                isAuthenticated ? (
+              {APP_ENABLED ? (
+                <>
+                  {!isLoading && (
+                    isAuthenticated ? (
+                      <button
+                        onClick={signOut}
+                        className="text-[13px] font-medium text-[#64748B] hover:text-black transition-colors"
+                      >
+                        Sign out
+                      </button>
+                    ) : (
+                      <button
+                        onClick={signIn}
+                        className="text-[13px] font-medium text-[#64748B] hover:text-black transition-colors"
+                      >
+                        Sign in
+                      </button>
+                    )
+                  )}
                   <button
-                    onClick={signOut}
-                    className="text-[13px] font-medium text-[#64748B] hover:text-black transition-colors"
+                    onClick={handleLaunchApp}
+                    className="flex items-center gap-1.5 h-8 px-4 text-black text-[13px] font-semibold tracking-[-0.01em] hover:bg-gray-100 rounded transition-colors"
                   >
-                    Sign out
+                    <Image src="/logo.png" alt="" width={28} height={28} className="object-contain" />
+                    {isAuthenticated ? "Dashboard" : "Launch App"}
                   </button>
-                ) : (
-                  <button
-                    onClick={signIn}
-                    className="text-[13px] font-medium text-[#64748B] hover:text-black transition-colors"
-                  >
-                    Sign in
-                  </button>
-                )
+                </>
+              ) : (
+                <span className="h-7 px-3 flex items-center text-[12px] font-medium text-[#94A3B8] border border-[#E2E8F0] bg-[#F8FAFC] select-none">
+                  Coming soon
+                </span>
               )}
-              <button
-                onClick={handleLaunchApp}
-                className="flex items-center gap-1.5 h-8 px-4 text-black text-[13px] font-semibold tracking-[-0.01em] hover:bg-gray-100 rounded transition-colors"
-              >
-                <Image src="/logo.png" alt="" width={28} height={28} className="object-contain" />
-                {isAuthenticated ? "Dashboard" : "Launch App"}
-              </button>
             </div>
 
             {/* Mobile menu button */}
@@ -148,30 +157,38 @@ export function Navbar() {
                 </a>
               ))}
               <div className="pt-3 mt-2 border-t border-black/5 flex flex-col gap-2">
-                {!isLoading && (
-                  isAuthenticated ? (
+                {APP_ENABLED ? (
+                  <>
+                    {!isLoading && (
+                      isAuthenticated ? (
+                        <button
+                          onClick={() => { setMobileOpen(false); signOut(); }}
+                          className="px-3 py-2.5 text-[14px] font-medium text-gray-700 hover:text-black transition-colors text-left"
+                        >
+                          Sign out
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => { setMobileOpen(false); signIn(); }}
+                          className="px-3 py-2.5 text-[14px] font-medium text-gray-700 hover:text-black transition-colors text-left"
+                        >
+                          Sign in with GitHub
+                        </button>
+                      )
+                    )}
                     <button
-                      onClick={() => { setMobileOpen(false); signOut(); }}
-                      className="px-3 py-2.5 text-[14px] font-medium text-gray-700 hover:text-black transition-colors text-left"
+                      onClick={() => { setMobileOpen(false); handleLaunchApp(); }}
+                      className="flex items-center justify-center gap-2 h-10 bg-black text-white text-[13px] font-semibold hover:bg-gray-900 transition-colors"
                     >
-                      Sign out
+                      <Image src="/logo.png" alt="" width={28} height={28} className="object-contain" />
+                      {isAuthenticated ? "Dashboard" : "Launch App"}
                     </button>
-                  ) : (
-                    <button
-                      onClick={() => { setMobileOpen(false); signIn(); }}
-                      className="px-3 py-2.5 text-[14px] font-medium text-gray-700 hover:text-black transition-colors text-left"
-                    >
-                      Sign in with GitHub
-                    </button>
-                  )
+                  </>
+                ) : (
+                  <div className="flex items-center justify-center h-10 border border-[#E2E8F0] text-[13px] font-medium text-[#94A3B8] bg-[#F8FAFC] select-none">
+                    Coming soon
+                  </div>
                 )}
-                <button
-                  onClick={() => { setMobileOpen(false); handleLaunchApp(); }}
-                  className="flex items-center justify-center gap-2 h-10 bg-black text-white text-[13px] font-semibold hover:bg-gray-900 transition-colors"
-                >
-                  <Image src="/logo.png" alt="" width={28} height={28} className="object-contain" />
-                  {isAuthenticated ? "Dashboard" : "Launch App"}
-                </button>
               </div>
             </div>
           </motion.div>

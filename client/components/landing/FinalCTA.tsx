@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 import { useAuthNavigation } from "@/hooks/useAuthNavigation";
+import { APP_ENABLED } from "@/lib/flags";
 
 export function FinalCTA() {
   const { isAuthenticated } = useAuth();
@@ -89,26 +90,35 @@ export function FinalCTA() {
           transition={{ duration: 0.45, delay: 0.3 }}
           className="flex flex-col sm:flex-row items-center gap-3"
         >
-          <button
-            type="button"
-            onClick={launchApp}
-            className="flex items-center gap-2 h-12 px-7 bg-gray-200 text-black text-[14px] font-semibold tracking-[-0.01em] hover:bg-gray-300 transition-colors"
-          >
-            <Image src="/logo.png" alt="" width={15} height={15} className="object-contain" />
-            {isAuthenticated ? "Go to Dashboard" : "Start deploying free"}
-          </button>
-          <button
-            type="button"
-            onClick={connectGithub}
-            className={`flex items-center gap-2 h-12 px-6 border text-[14px] font-medium transition-colors ${
-              isAuthenticated
-                ? "border-green-200 bg-green-50 text-green-800 hover:border-green-300"
-                : "border-black/12 bg-white text-black hover:border-black/25 hover:bg-gray-50"
-            }`}
-          >
-            <Image src="/github.png" alt="" width={15} height={15} className="object-contain" />
-            {isAuthenticated ? "GitHub Connected" : "Connect GitHub"}
-          </button>
+          {APP_ENABLED ? (
+            <>
+              <button
+                type="button"
+                onClick={launchApp}
+                className="flex items-center gap-2 h-12 px-7 bg-gray-200 text-black text-[14px] font-semibold tracking-[-0.01em] hover:bg-gray-300 transition-colors"
+              >
+                <Image src="/logo.png" alt="" width={15} height={15} className="object-contain" />
+                {isAuthenticated ? "Go to Dashboard" : "Start deploying free"}
+              </button>
+              <button
+                type="button"
+                onClick={connectGithub}
+                className={`flex items-center gap-2 h-12 px-6 border text-[14px] font-medium transition-colors ${
+                  isAuthenticated
+                    ? "border-green-200 bg-green-50 text-green-800 hover:border-green-300"
+                    : "border-black/12 bg-white text-black hover:border-black/25 hover:bg-gray-50"
+                }`}
+              >
+                <Image src="/github.png" alt="" width={15} height={15} className="object-contain" />
+                {isAuthenticated ? "GitHub Connected" : "Connect GitHub"}
+              </button>
+            </>
+          ) : (
+            <span className="h-12 px-7 flex items-center gap-2 border border-[#E2E8F0] bg-[#F8FAFC] text-[14px] font-medium text-[#94A3B8] select-none cursor-default">
+              <Image src="/logo.png" alt="" width={15} height={15} className="object-contain opacity-40" />
+              Coming soon — stay tuned
+            </span>
+          )}
         </motion.div>
 
         {/* Footnote */}
@@ -119,7 +129,9 @@ export function FinalCTA() {
           transition={{ delay: 0.45, duration: 0.4 }}
           className="text-[12px] text-[#94A3B8]"
         >
-          Free to start · No credit card · No DevOps experience required
+          {APP_ENABLED
+            ? "Free to start · No credit card · No DevOps experience required"
+            : "Currently in private development · launching soon"}
         </motion.p>
       </div>
     </section>
