@@ -1,6 +1,8 @@
 # Dependencies
 node_modules/
 
+deploy.html
+
 # Build outputs
 dist/
 .next/

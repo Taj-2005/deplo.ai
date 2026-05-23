@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useParams } from "next/navigation";
 import {
   ArrowLeft,
@@ -15,9 +15,19 @@ import {
   AlertCircle,
   RefreshCw,
   XCircle,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  ChevronUp,
+  ArrowRight,
+  Info,
 } from "lucide-react";
 import { DeploymentStatusBadge } from "@/components/dashboard/DeploymentStatusBadge";
-import { fetchDeployment, cancelDeployment } from "@/lib/dashboard-api";
+import {
+  fetchDeployment,
+  cancelDeployment,
+  provideEnvVariables,
+} from "@/lib/dashboard-api";
 import { formatRelativeTime, formatDuration } from "@/lib/format";
 import { isActiveStatus } from "@/types/dashboard";
 import type { DeploymentDetail } from "@/types/dashboard";
@@ -67,6 +77,252 @@ function UrlCard({ label, url }: { label: string; url: string }) {
   );
 }
 
+// ─── Env Var Form ─────────────────────────────────────────────────────────────
+
+interface EnvVar { key: string; isRequired: boolean }
+
+function EnvVarForm({
+  dep,
+  onSubmitted,
+}: {
+  dep: DeploymentDetail;
+  onSubmitted: () => void;
+}) {
+  const allVars = dep.envVariables;
+  const required = allVars.filter((v) => v.isRequired);
+  const optional = allVars.filter((v) => !v.isRequired);
+  const hasBackendAndFrontend =
+    dep.detectedStack?.backend && dep.detectedStack?.frontend;
+
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(allVars.map((v) => [v.key, ""])),
+  );
+  const [revealed, setRevealed] = useState<Set<string>>(new Set());
+  const [errors, setErrors] = useState<Set<string>>(new Set());
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteContent, setPasteContent] = useState("");
+
+  const toggleReveal = (key: string) =>
+    setRevealed((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+
+  function applyPaste() {
+    const parsed: Record<string, string> = {};
+    for (const line of pasteContent.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const eq = trimmed.indexOf("=");
+      if (eq === -1) continue;
+      const key = trimmed.slice(0, eq).trim();
+      const value = trimmed.slice(eq + 1).trim().replace(/^["']|["']$/g, "");
+      if (key) parsed[key] = value;
+    }
+    setValues((prev) => ({ ...prev, ...parsed }));
+    setPasteOpen(false);
+    setPasteContent("");
+  }
+
+  async function handleSubmit() {
+    const missing = new Set(
+      required.filter((v) => !values[v.key]?.trim()).map((v) => v.key),
+    );
+    if (missing.size > 0) {
+      setErrors(missing);
+      return;
+    }
+    setErrors(new Set());
+    setSubmitError(null);
+    setSubmitting(true);
+    try {
+      await provideEnvVariables(
+        dep.id,
+        Object.entries(values)
+          .filter(([, v]) => v.trim() !== "")
+          .map(([key, value]) => ({ key, value })),
+      );
+      onSubmitted();
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Failed to submit");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <section className="mb-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-[11px] font-mono font-medium text-ds-on-variant uppercase tracking-[0.08em]">
+          Environment Variables Required
+        </h2>
+        <button
+          onClick={() => setPasteOpen((o) => !o)}
+          className="flex items-center gap-1 text-[11px] font-mono text-ds-on-variant hover:text-ds-on-surface border border-ds-outline-variant px-2.5 py-1 transition-colors"
+        >
+          {pasteOpen ? <ChevronUp size={10} strokeWidth={1.5} /> : <ChevronDown size={10} strokeWidth={1.5} />}
+          Paste .env file
+        </button>
+      </div>
+
+      {/* Paste area */}
+      <AnimatePresence>
+        {pasteOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.15 }}
+            className="overflow-hidden mb-4"
+          >
+            <div className="border border-ds-outline-variant bg-ds-surface-highest p-3">
+              <p className="text-[10px] font-mono text-ds-on-variant mb-2">
+                Paste the contents of your .env file — matching keys will be filled automatically.
+              </p>
+              <textarea
+                value={pasteContent}
+                onChange={(e) => setPasteContent(e.target.value)}
+                placeholder={"DATABASE_URL=postgresql://...\nJWT_SECRET=mysecret"}
+                rows={5}
+                className="w-full bg-transparent font-mono text-[12px] text-ds-on-surface resize-none outline-none placeholder:text-ds-on-variant/40"
+              />
+              <div className="flex justify-end mt-2">
+                <button
+                  onClick={applyPaste}
+                  disabled={!pasteContent.trim()}
+                  className="text-[11px] font-mono border border-ds-outline-variant px-3 py-1.5 hover:bg-ds-surface-low transition-colors disabled:opacity-40"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Fields */}
+      <div className="border border-ds-outline-variant divide-y divide-ds-outline-variant">
+        {/* Required vars */}
+        {required.map((v) => (
+          <EnvField
+            key={v.key}
+            envVar={v}
+            value={values[v.key] ?? ""}
+            onChange={(val) => {
+              setValues((p) => ({ ...p, [v.key]: val }));
+              if (val.trim()) setErrors((p) => { const n = new Set(p); n.delete(v.key); return n; });
+            }}
+            revealed={revealed.has(v.key)}
+            onToggleReveal={() => toggleReveal(v.key)}
+            hasError={errors.has(v.key)}
+          />
+        ))}
+
+        {/* Optional vars */}
+        {optional.map((v) => (
+          <EnvField
+            key={v.key}
+            envVar={v}
+            value={values[v.key] ?? ""}
+            onChange={(val) => setValues((p) => ({ ...p, [v.key]: val }))}
+            revealed={revealed.has(v.key)}
+            onToggleReveal={() => toggleReveal(v.key)}
+            hasError={false}
+          />
+        ))}
+      </div>
+
+      {/* Auto-inject notice */}
+      {hasBackendAndFrontend && (
+        <div className="flex items-start gap-2 mt-3 px-3 py-2.5 bg-ds-surface-low border border-ds-outline-variant">
+          <Info size={12} strokeWidth={1.5} className="text-ds-primary shrink-0 mt-0.5" />
+          <p className="text-[11px] font-mono text-ds-on-variant leading-relaxed">
+            Your backend URL will be automatically injected as{" "}
+            <code className="text-ds-primary">NEXT_PUBLIC_API_URL</code>{" "}
+            in the frontend — no need to add it manually.
+          </p>
+        </div>
+      )}
+
+      {/* Error */}
+      {submitError && (
+        <p className="mt-2 text-[11px] font-mono text-red-500">{submitError}</p>
+      )}
+      {errors.size > 0 && (
+        <p className="mt-2 text-[11px] font-mono text-amber-600 dark:text-amber-400">
+          Fill in all required fields before continuing.
+        </p>
+      )}
+
+      {/* Submit */}
+      <div className="flex justify-end mt-4">
+        <button
+          onClick={() => void handleSubmit()}
+          disabled={submitting}
+          className="flex items-center gap-2 px-4 py-2 text-[12px] font-mono border border-ds-primary text-ds-primary hover:bg-ds-primary hover:text-white transition-colors disabled:opacity-50"
+        >
+          {submitting ? "Submitting…" : "Continue Deployment"}
+          {!submitting && <ArrowRight size={12} strokeWidth={1.5} />}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function EnvField({
+  envVar,
+  value,
+  onChange,
+  revealed,
+  onToggleReveal,
+  hasError,
+}: {
+  envVar: EnvVar;
+  value: string;
+  onChange: (v: string) => void;
+  revealed: boolean;
+  onToggleReveal: () => void;
+  hasError: boolean;
+}) {
+  return (
+    <div className={`px-4 py-3 ${hasError ? "bg-red-50 dark:bg-red-950/30" : ""}`}>
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <code className="text-[12px] font-mono text-ds-on-surface">{envVar.key}</code>
+        {envVar.isRequired ? (
+          <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-700 px-1 py-px">
+            required
+          </span>
+        ) : (
+          <span className="text-[10px] font-mono text-ds-on-variant">optional</span>
+        )}
+      </div>
+      <div className={`flex items-center gap-1 border ${hasError ? "border-red-400 dark:border-red-600" : "border-ds-outline-variant"} bg-ds-surface-highest`}>
+        <input
+          type={revealed ? "text" : "password"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={envVar.isRequired ? "Enter value…" : "Leave blank to skip"}
+          className="flex-1 min-w-0 bg-transparent font-mono text-[12px] text-ds-on-surface px-3 py-2 outline-none placeholder:text-ds-on-variant/40"
+        />
+        <button
+          type="button"
+          onClick={onToggleReveal}
+          className="px-2 py-2 text-ds-on-variant hover:text-ds-on-surface transition-colors shrink-0"
+          tabIndex={-1}
+        >
+          {revealed
+            ? <EyeOff size={12} strokeWidth={1.5} />
+            : <Eye size={12} strokeWidth={1.5} />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DeploymentDetailPage() {
@@ -92,7 +348,24 @@ export default function DeploymentDetailPage() {
     }
   }, [id]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await fetchDeployment(id);
+        if (cancelled) return;
+        setDep(data);
+        setError(null);
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Failed to load deployment");
+      } finally {
+        if (cancelled) return;
+        setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [id]);
 
   // Auto-refresh while active
   useEffect(() => {
@@ -151,6 +424,7 @@ export default function DeploymentDetailPage() {
   }
 
   const active = isActiveStatus(dep.status);
+  const waitingForEnv = dep.status === "WAITING_FOR_ENV";
   const hasFailed = dep.status === "FAILED";
   const hasUrls = dep.frontendUrl || dep.backendUrl;
   const stackStr = [dep.detectedStack?.frontend, dep.detectedStack?.backend]
@@ -199,7 +473,7 @@ export default function DeploymentDetailPage() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <DeploymentStatusBadge status={dep.status} />
-          {active && (
+          {(active || waitingForEnv) && (
             <button
               onClick={() => void handleCancel()}
               disabled={cancelling}
@@ -225,6 +499,11 @@ export default function DeploymentDetailPage() {
         <div className="mb-6 h-px bg-ds-outline-variant overflow-hidden">
           <div className="h-full bg-ds-primary animate-pulse w-2/3" />
         </div>
+      )}
+
+      {/* Waiting for env — full form */}
+      {waitingForEnv && dep.envVariables.length > 0 && (
+        <EnvVarForm dep={dep} onSubmitted={() => void load()} />
       )}
 
       {/* Deployment URLs */}
@@ -260,27 +539,6 @@ export default function DeploymentDetailPage() {
         </section>
       )}
 
-      {/* Env vars required */}
-      {dep.envVariables.filter((v) => v.isRequired).length > 0 && (
-        <section className="mb-6">
-          <h2 className="text-[11px] font-mono font-medium text-ds-on-variant uppercase tracking-[0.08em] mb-3">
-            Required Environment Variables
-          </h2>
-          <div className="border border-ds-outline-variant divide-y divide-ds-outline-variant">
-            {dep.envVariables
-              .filter((v) => v.isRequired)
-              .map((v) => (
-                <div key={v.key} className="px-4 py-2.5 flex items-center justify-between">
-                  <code className="text-[12px] font-mono text-ds-on-surface">{v.key}</code>
-                  <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-700 px-1.5 py-0.5">
-                    required
-                  </span>
-                </div>
-              ))}
-          </div>
-        </section>
-      )}
-
       {/* Build logs */}
       <section>
         <h2 className="text-[11px] font-mono font-medium text-ds-on-variant uppercase tracking-[0.08em] mb-3 flex items-center gap-2">
@@ -301,6 +559,8 @@ export default function DeploymentDetailPage() {
                     ? "text-red-500"
                     : line.startsWith("Stack detected") || line.includes("live at")
                     ? "text-green-500 dark:text-green-400"
+                    : line.startsWith("Waiting for")
+                    ? "text-amber-500 dark:text-amber-400"
                     : "text-ds-on-surface"
                 }>
                   {line}
@@ -308,7 +568,7 @@ export default function DeploymentDetailPage() {
               </div>
             ))
           )}
-          {active && (
+          {(active || waitingForEnv) && (
             <div className="flex gap-3 mt-1">
               <span className="text-ds-outline select-none">
                 {String(dep.logs.length + 1).padStart(2, "0")}

@@ -32,8 +32,27 @@ function useAsyncData<T>(
   }, [fetcher]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const data = await fetcher();
+        if (cancelled) return;
+        setState({ data, error: null, loading: false });
+      } catch (err) {
+        if (cancelled) return;
+        setState({
+          data: null,
+          error: err instanceof Error ? err.message : "Something went wrong",
+          loading: false,
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetcher]);
 
   return { ...state, refetch: load };
 }

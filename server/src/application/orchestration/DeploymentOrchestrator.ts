@@ -3,7 +3,6 @@ import type { IRepositoryRepository } from "../../domain/repository/Repository";
 import type { IUserRepository } from "../../domain/user/UserRepository.interface";
 import type { AnalysisService } from "../services/AnalysisService";
 import { type VercelAdapter } from "../../infrastructure/vercel/VercelAdapter";
-import { type RenderAdapter } from "../../infrastructure/render/RenderAdapter";
 import type { GitHubAdapter } from "../../infrastructure/github/GitHubAdapter";
 import type { StackType } from "../../domain/deployment/Deployment";
 import type { VercelFramework } from "../../infrastructure/vercel/VercelAdapter";
@@ -34,6 +33,13 @@ function toHumanStack(stack: StackType | null): string | null {
   return stack ? (map[stack] ?? stack) : null;
 }
 
+interface PkgJson {
+  main?: string;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  scripts?: Record<string, string>;
+}
+
 // ─── Orchestrator ────────────────────────────────────────────────────────────
 
 export class DeploymentOrchestrator {
@@ -43,7 +49,6 @@ export class DeploymentOrchestrator {
     private readonly userRepository: IUserRepository,
     private readonly analysisService: AnalysisService,
     private readonly vercel: VercelAdapter,
-    private readonly render: RenderAdapter,
     private readonly github: GitHubAdapter,
   ) {}
 
@@ -139,63 +144,116 @@ export class DeploymentOrchestrator {
 
       let backendUrl: string | null = null;
 
-      // ── Backend (Render) ─────────────────────────────────────────────────
+      // ── Backend (Vercel serverless) ──────────────────────────────────────
       if (hasBackend) {
-        if (!env.RENDER_API_KEY || !env.RENDER_OWNER_ID) {
-          throw AppError.externalService(
-            "Render",
-            "RENDER_API_KEY and RENDER_OWNER_ID must be configured",
-          );
+        if (!env.VERCEL_TOKEN) {
+          throw AppError.externalService("Vercel", "VERCEL_TOKEN must be configured");
         }
 
         await this.deploymentRepository.update(deploymentId, { status: "DEPLOYING_BACKEND" });
-        await this.deploymentRepository.appendLog(deploymentId, "Deploying backend to Render…");
+        await this.deploymentRepository.appendLog(deploymentId, "Deploying backend to Vercel (serverless)…");
 
-        const serviceName = this.serviceSlug(repository.name, "api");
-        const buildCmd    = stack?.buildCommand ?? "npm install && npm run build";
-        const startCmd    = this.backendStartCommand(stack?.backend ?? null);
+        const backendSubPath = stack?.backendPath ?? "";
+        const treeEntries = await this.github.getRepoTree(githubToken, repository.fullName, branch);
 
-        const renderParams: Parameters<RenderAdapter["createWebService"]>[0] = {
-          name: serviceName,
-          repoUrl: repository.cloneUrl,
-          branch,
-          buildCommand: buildCmd,
-          startCommand: startCmd,
-          ownerId: env.RENDER_OWNER_ID,
-          envVars: [
-            { key: "NODE_ENV", value: "production" },
-            ...envVars
-              .filter((v) => !v.isRequired || v.value !== "")
-              .map((v) => ({ key: v.key, value: v.value })),
-          ],
-          plan: "starter",
-        };
-        if (stack?.backendPath) renderParams.rootDir = stack.backendPath;
+        const relevantEntries = backendSubPath
+          ? treeEntries.filter((e) => e.path.startsWith(`${backendSubPath}/`))
+          : treeEntries;
 
-        const { service, deployId } = await this.render.createWebService(renderParams);
+        await this.deploymentRepository.appendLog(
+          deploymentId,
+          `Downloading ${relevantEntries.length} files${backendSubPath ? ` from ${backendSubPath}/` : ""}…`,
+        );
 
-        await this.deploymentRepository.update(deploymentId, {
-          renderServiceId: service.id,
-          renderDeployId: deployId,
+        const BATCH = 20;
+        const backendFiles: Array<{ path: string; content: Buffer }> = [];
+        for (let i = 0; i < relevantEntries.length; i += BATCH) {
+          const batch = relevantEntries.slice(i, i + BATCH);
+          const buffers = await Promise.all(
+            batch.map((e) => this.github.getBlob(githubToken, repository.fullName, e.sha)),
+          );
+          batch.forEach((e, idx) => {
+            const relativePath = backendSubPath
+              ? e.path.slice(`${backendSubPath}/`.length)
+              : e.path;
+            backendFiles.push({ path: relativePath, content: buffers[idx]! });
+          });
+        }
+
+        // Patch package.json to add serverless-http
+        const pkgIdx = backendFiles.findIndex((f) => f.path === "package.json");
+        let pkg: PkgJson | null = null;
+        if (pkgIdx !== -1) {
+          try {
+            pkg = JSON.parse(backendFiles[pkgIdx]!.content.toString("utf8")) as PkgJson;
+            const patched: PkgJson = {
+              ...pkg,
+              dependencies: { ...(pkg.dependencies ?? {}), "serverless-http": "^3.2.0" },
+            };
+            backendFiles[pkgIdx] = {
+              path: "package.json",
+              content: Buffer.from(JSON.stringify(patched, null, 2), "utf8"),
+            };
+          } catch { /* leave as-is */ }
+        }
+
+        // Detect entry point and inject serverless wrapper + vercel.json
+        const entry = this.resolveBackendEntry(pkg, backendFiles);
+        backendFiles.push(
+          {
+            path: "api/index.js",
+            content: Buffer.from(this.generateServerlessWrapper(entry, stack?.backend ?? null), "utf8"),
+          },
+          {
+            path: "vercel.json",
+            content: Buffer.from(
+              JSON.stringify(
+                { version: 2, builds: [{ src: "api/index.js", use: "@vercel/node" }], routes: [{ src: "/(.*)", dest: "/api/index.js" }] },
+                null, 2,
+              ),
+              "utf8",
+            ),
+          },
+        );
+
+        const backendProjectName = this.serviceSlug(repository.name, "api");
+        const backendEnvVars = [
+          { key: "NODE_ENV", value: "production", target: ["production" as const] },
+          ...envVars
+            .filter((v) => !v.isRequired || v.value !== "")
+            .map((v) => ({ key: v.key, value: v.value, target: ["production" as const] })),
+        ];
+
+        const backendProject = await this.vercel.createProject({
+          name: backendProjectName,
+          framework: null,
+          environmentVariables: backendEnvVars,
+        });
+
+        const backendDeploy = await this.vercel.deployFromFiles({
+          projectId: backendProject.id,
+          name: backendProjectName,
+          files: backendFiles,
         });
 
         await this.deploymentRepository.appendLog(
           deploymentId,
-          `Render service created (${service.id}). Waiting for build…`,
+          `Vercel backend deployment triggered (${backendDeploy.id}). Waiting for build…`,
         );
 
-        const { url } = await this.render.waitForDeploy(service.id, deployId);
-        backendUrl = url;
+        const { url: bUrl } = await this.vercel.waitForDeployment(backendDeploy.id);
+        backendUrl = bUrl;
 
         await this.deploymentRepository.update(deploymentId, {
           backendUrl,
           status: "BACKEND_READY",
+          renderServiceId: backendProject.id, // repurposed to store backend Vercel project ID
         });
         await this.deploymentRepository.appendLog(deploymentId, `Backend live at ${backendUrl}`);
-        logger.info("Backend deployed", { deploymentId, backendUrl });
+        logger.info("Backend deployed to Vercel (serverless)", { deploymentId, backendUrl });
       }
 
-      // ── Frontend (Vercel — file-based, no GitHub App required) ───────────
+      // ── Frontend (Vercel — file-based) ───────────────────────────────────
       if (hasFrontend) {
         if (!env.VERCEL_TOKEN) {
           throw AppError.externalService("Vercel", "VERCEL_TOKEN must be configured");
@@ -204,11 +262,9 @@ export class DeploymentOrchestrator {
         await this.deploymentRepository.update(deploymentId, { status: "DEPLOYING_FRONTEND" });
         await this.deploymentRepository.appendLog(deploymentId, "Fetching repository files…");
 
-        // Download all files from the user's repo using their GitHub token
         const frontendSubPath = stack?.frontendPath ?? "";
         const treeEntries = await this.github.getRepoTree(githubToken, repository.fullName, branch);
 
-        // Filter to the frontend subpath only (strips the prefix for Vercel)
         const relevantEntries = frontendSubPath
           ? treeEntries.filter((e) => e.path.startsWith(`${frontendSubPath}/`))
           : treeEntries;
@@ -218,7 +274,6 @@ export class DeploymentOrchestrator {
           `Downloading ${relevantEntries.length} files${frontendSubPath ? ` from ${frontendSubPath}/` : ""}…`,
         );
 
-        // Download blobs in parallel batches of 20
         const BATCH = 20;
         const deployFiles: Array<{ path: string; content: Buffer }> = [];
         for (let i = 0; i < relevantEntries.length; i += BATCH) {
@@ -305,6 +360,62 @@ export class DeploymentOrchestrator {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
+  private resolveBackendEntry(
+    pkg: PkgJson | null,
+    files: Array<{ path: string }>,
+  ): string {
+    // Check package.json "main" field
+    if (pkg?.main) {
+      const main = pkg.main.replace(/^\.\//, "");
+      if (main.startsWith("dist/")) {
+        // Compiled output → find the source equivalent
+        const withoutDist = main.replace(/^dist\//, "").replace(/\.js$/, "");
+        for (const srcDir of ["src", ""]) {
+          const candidate = srcDir ? `${srcDir}/${withoutDist}` : withoutDist;
+          if (files.some((f) => f.path === `${candidate}.ts` || f.path === `${candidate}.js`)) {
+            return candidate;
+          }
+        }
+      }
+      return main.replace(/\.(ts|js)$/, "");
+    }
+
+    // Check start script: "node dist/index.js" or "ts-node src/index.ts"
+    const start = pkg?.scripts?.["start"] ?? "";
+    const startMatch = start.match(/(?:node|ts-node)\s+([^\s]+)/);
+    if (startMatch) {
+      const path = startMatch[1]!.replace(/\.(ts|js)$/, "");
+      if (path.startsWith("dist/")) {
+        const withoutDist = path.replace(/^dist\//, "");
+        if (files.some((f) => f.path === `src/${withoutDist}.ts` || f.path === `src/${withoutDist}.js`)) {
+          return `src/${withoutDist}`;
+        }
+      }
+      return path;
+    }
+
+    // Fallback: common entry points
+    const candidates = ["src/index", "src/app", "src/server", "index", "app", "server"];
+    for (const c of candidates) {
+      if (files.some((f) => f.path === `${c}.ts` || f.path === `${c}.js`)) {
+        return c;
+      }
+    }
+
+    return "src/index";
+  }
+
+  private generateServerlessWrapper(entryPath: string, backend: StackType | null): string {
+    const importPath = entryPath.startsWith(".") ? entryPath : `../${entryPath}`;
+    return [
+      `// Generated by deplo.ai — serverless adapter for ${backend ?? "Express"} backend`,
+      `const serverlessHttp = require('serverless-http');`,
+      `const mod = require('${importPath}');`,
+      `const app = mod.default || mod.app || mod.fastify || mod;`,
+      `module.exports = serverlessHttp(app);`,
+    ].join("\n") + "\n";
+  }
+
   private async failDeployment(deploymentId: string, err: unknown): Promise<void> {
     const message = err instanceof Error ? err.message : String(err);
     logger.error("Deployment failed", { deploymentId, error: message });
@@ -324,10 +435,5 @@ export class DeploymentOrchestrator {
       .replace(/^-|-$/g, "")
       .slice(0, 40);
     return `deplo-${base}-${suffix}`;
-  }
-
-  private backendStartCommand(backend: StackType | null): string {
-    if (backend === "FASTIFY") return "node dist/index.js";
-    return "node dist/index.js";
   }
 }

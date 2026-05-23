@@ -4,7 +4,6 @@ import type { DeploymentService } from "../../../application/services/Deployment
 import type { IDeploymentRepository } from "../../../domain/deployment/DeploymentRepository.interface";
 import type { Deployment, DetectedStack } from "../../../domain/deployment/Deployment";
 import { z } from "zod";
-import { AppError } from "../../../shared/errors/AppError";
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
 
@@ -16,7 +15,7 @@ const STACK_LABELS: Record<string, string> = {
   UNKNOWN: "Unknown",
 };
 
-function formatStack(stack: DetectedStack | null) {
+function formatStack(stack: DetectedStack | null): { frontend: string | null; backend: string | null } | null {
   if (!stack) return null;
   return {
     frontend: stack.frontend ? (STACK_LABELS[stack.frontend] ?? stack.frontend) : null,

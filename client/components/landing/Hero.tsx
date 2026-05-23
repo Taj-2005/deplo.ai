@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRef, useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useAuthNavigation } from "@/hooks/useAuthNavigation";
+import { APP_ENABLED } from "@/lib/flags";
 
 /* ── Shared primitives ── */
 function SparkIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
@@ -402,26 +403,35 @@ export function Hero() {
           transition={{ duration: 0.45, delay: 0.42 }}
           className="flex flex-col sm:flex-row items-center gap-3"
         >
-          <button
-            type="button"
-            onClick={launchApp}
-            className="flex items-center gap-2 h-11 px-6 bg-black text-white text-[13.5px] font-semibold tracking-[-0.01em] hover:bg-gray-900 transition-colors"
-          >
-            <SparkIcon size={12} />
-            {isAuthenticated ? "Go to Dashboard" : "Launch App"}
-          </button>
-          <button
-            type="button"
-            onClick={connectGithub}
-            className={`flex items-center gap-2 h-11 px-6 border text-[13.5px] font-medium transition-colors ${
-              isAuthenticated
-                ? "border-green-200 bg-green-50 text-green-800 hover:border-green-300"
-                : "border-black/12 bg-white text-black hover:border-black/25 hover:bg-gray-50"
-            }`}
-          >
-            <Image src="/github.png" alt="" width={15} height={15} className="object-contain" />
-            {isAuthenticated ? "GitHub Connected" : "Connect GitHub"}
-          </button>
+          {APP_ENABLED ? (
+            <>
+              <button
+                type="button"
+                onClick={launchApp}
+                className="flex items-center gap-2 h-11 px-6 bg-black text-white text-[13.5px] font-semibold tracking-[-0.01em] hover:bg-gray-900 transition-colors"
+              >
+                <SparkIcon size={12} />
+                {isAuthenticated ? "Go to Dashboard" : "Launch App"}
+              </button>
+              <button
+                type="button"
+                onClick={connectGithub}
+                className={`flex items-center gap-2 h-11 px-6 border text-[13.5px] font-medium transition-colors ${
+                  isAuthenticated
+                    ? "border-green-200 bg-green-50 text-green-800 hover:border-green-300"
+                    : "border-black/12 bg-white text-black hover:border-black/25 hover:bg-gray-50"
+                }`}
+              >
+                <Image src="/github.png" alt="" width={15} height={15} className="object-contain" />
+                {isAuthenticated ? "GitHub Connected" : "Connect GitHub"}
+              </button>
+            </>
+          ) : (
+            <span className="flex items-center gap-2 h-11 px-6 bg-black text-white text-[13.5px] font-semibold tracking-[-0.01em] opacity-60 cursor-default select-none">
+              <SparkIcon size={12} />
+              Coming soon
+            </span>
+          )}
           <a
             href="#how-it-works"
             className="flex items-center gap-1.5 h-11 px-4 text-[13px] font-medium text-[#64748B] hover:text-black transition-colors"

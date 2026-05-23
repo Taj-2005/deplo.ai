@@ -9,7 +9,7 @@ import { DeploymentStatusBadge } from "@/components/dashboard/DeploymentStatusBa
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { SkeletonRow } from "@/components/dashboard/SkeletonCard";
 import { formatRelativeTime, formatDuration } from "@/lib/format";
-import type { Deployment, DeploymentStatus } from "@/types/dashboard";
+import type { Deployment } from "@/types/dashboard";
 import { isActiveStatus } from "@/types/dashboard";
 
 function classifyError(err: string | null) {

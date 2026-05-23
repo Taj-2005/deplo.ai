@@ -25,7 +25,6 @@ import { RepositoryRepository } from "./infrastructure/database/repositories/Rep
 import { CacheService } from "./infrastructure/redis/CacheService";
 import { GitHubAdapter } from "./infrastructure/github/GitHubAdapter";
 import { VercelAdapter } from "./infrastructure/vercel/VercelAdapter";
-import { RenderAdapter } from "./infrastructure/render/RenderAdapter";
 import { getDeploymentQueue } from "./infrastructure/queue/DeploymentQueue";
 import { createDeploymentWorker } from "./infrastructure/queue/DeploymentWorker";
 
@@ -73,7 +72,6 @@ async function bootstrap(): Promise<void> {
   // ── External adapters ─────────────────────────────────────────────────────
   const github = new GitHubAdapter();
   const vercel = new VercelAdapter();
-  const render = new RenderAdapter();
 
   // ── Application services ──────────────────────────────────────────────────
   const repositoryService = new RepositoryService(repositoryRepository, github, cache);
@@ -97,7 +95,6 @@ async function bootstrap(): Promise<void> {
     userRepository,
     analysisService,
     vercel,
-    render,
     github,
   );
 
@@ -164,7 +161,6 @@ async function bootstrap(): Promise<void> {
 
   // Webhooks (no user auth — signature validation is done inside controllers)
   api.post("/webhooks/vercel", asyncHandler(webhooksController.vercel));
-  api.post("/webhooks/render", asyncHandler(webhooksController.render));
 
   // Protected
   api.use(authMiddleware);
