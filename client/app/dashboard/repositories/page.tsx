@@ -20,7 +20,6 @@ import {
   KeyRound,
 } from "lucide-react";
 import { useRepositories } from "@/hooks/useDashboardData";
-import { initiateDeployment } from "@/lib/dashboard-api";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { SkeletonRepoCard } from "@/components/dashboard/SkeletonCard";
 import { formatRelativeTime } from "@/lib/format";
@@ -172,15 +171,9 @@ export default function RepositoriesPage() {
     );
   }, [repos, query]);
 
-  async function handleImport(repo: Repository) {
+  function handleImport(repo: Repository) {
     setImportStates((s) => ({ ...s, [repo.id]: "importing" }));
-    try {
-      const { deploymentId } = await initiateDeployment(repo.id);
-      setImportStates((s) => ({ ...s, [repo.id]: "done" }));
-      setTimeout(() => router.push(`/dashboard/deployments/${deploymentId}`), 1000);
-    } catch {
-      setImportStates((s) => ({ ...s, [repo.id]: "idle" }));
-    }
+    setTimeout(() => router.push(`/dashboard/configure/${repo.id}`), 300);
   }
 
   return (

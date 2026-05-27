@@ -112,12 +112,30 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   return apiFetch<ApiStats>("/stats");
 }
 
+export interface StackAnalysis {
+  stack: {
+    frontend: string | null;
+    backend: string | null;
+    frontendPath: string;
+    backendPath: string;
+    buildCommand: string | null;
+    packageManager: string;
+  };
+  envVars: Array<{ key: string; value: string; isRequired: boolean; source: string }>;
+  defaultBranch: string;
+}
+
+export async function analyzeRepository(repositoryId: string): Promise<StackAnalysis> {
+  return apiFetch<StackAnalysis>(`/repos/${repositoryId}/analyze`);
+}
+
 export async function initiateDeployment(
   repositoryId: string,
+  envVars?: Array<{ key: string; value: string }>,
 ): Promise<{ deploymentId: string }> {
   const data = await apiFetch<{ deploymentId: string; status: string }>("/deployments", {
     method: "POST",
-    body: JSON.stringify({ repositoryId }),
+    body: JSON.stringify({ repositoryId, ...(envVars?.length ? { envVars } : {}) }),
   });
   return { deploymentId: data.deploymentId };
 }
