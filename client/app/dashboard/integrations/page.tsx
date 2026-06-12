@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -238,45 +238,51 @@ function VercelCard({ integration, onConnect, onDisconnect }: VercelCardProps) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+function toastFromVercelParam(result: string | null): { type: "success" | "error"; message: string } | null {
+  if (result === "connected") return { type: "success", message: "Vercel connected successfully. Your account is ready for deployments." };
+  if (result === "error") return { type: "error", message: "Vercel connection failed. Please try again." };
+  if (result === "required") return { type: "error", message: "Connect your Vercel account before deploying." };
+  return null;
+}
+
 export default function IntegrationsPage() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
 
   const [integrations, setIntegrations] = useState<IntegrationStatus[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  const load = useCallback(async () => {
+  // Initialize toast from URL param immediately during render (no effect needed)
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(
+    () => toastFromVercelParam(searchParams.get("vercel")),
+  );
+
+  async function load() {
     try {
       const data = await getIntegrations();
       setIntegrations(data);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Failed to load integrations");
     }
-  }, []);
+  }
 
+  // Load integrations on mount; also reload when returning from a successful OAuth connect.
+  // setState calls are inside .then()/.catch() so they are not synchronous within the effect body.
   useEffect(() => {
-    void load();
-  }, [load]);
-
-  // Handle OAuth callback result from query params
-  useEffect(() => {
-    const vercelResult = searchParams.get("vercel");
-    if (vercelResult === "connected") {
-      setToast({ type: "success", message: "Vercel connected successfully. Your account is ready for deployments." });
-      void load();
-    } else if (vercelResult === "error") {
-      setToast({ type: "error", message: "Vercel connection failed. Please try again." });
-    } else if (vercelResult === "required") {
-      setToast({ type: "error", message: "Connect your Vercel account before deploying." });
-    }
-    // Clean up the query param from URL without causing a navigation
-    if (vercelResult) {
+    const shouldRefresh = searchParams.get("vercel") === "connected";
+    getIntegrations()
+      .then((data) => setIntegrations(data))
+      .catch((err: unknown) => {
+        setLoadError(err instanceof Error ? err.message : "Failed to load integrations");
+      });
+    // Clean up the query param from URL without a navigation
+    if (shouldRefresh || searchParams.get("vercel")) {
       const url = new URL(window.location.href);
       url.searchParams.delete("vercel");
       window.history.replaceState({}, "", url.toString());
     }
-  }, [searchParams, load]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const vercelIntegration = integrations?.find((i) => i.provider === "VERCEL") ?? null;
 
