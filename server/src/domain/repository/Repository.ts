@@ -16,6 +16,7 @@ export interface Repository {
 
 export interface IRepositoryRepository {
   findById(id: string): Promise<Repository | null>;
+  findByFullName(fullName: string): Promise<Repository | null>;
   findByGithubRepoId(githubRepoId: string): Promise<Repository | null>;
   findByUserId(userId: string): Promise<Repository[]>;
   upsert(

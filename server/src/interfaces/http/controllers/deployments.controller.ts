@@ -25,13 +25,14 @@ function formatStack(stack: DetectedStack | null): { frontend: string | null; ba
 
 function calcDuration(dep: Deployment): number | null {
   if (!dep.completedAt) return null;
-  return Math.round((dep.completedAt.getTime() - dep.createdAt.getTime()) / 1000);
+  return Math.round((new Date(dep.completedAt).getTime() - new Date(dep.createdAt).getTime()) / 1000);
 }
 
 // ─── Controller ──────────────────────────────────────────────────────────────
 
 const StartDeploymentSchema = z.object({
   repositoryId: z.string().min(1),
+  envVars: z.array(z.object({ key: z.string().min(1), value: z.string() })).optional(),
 });
 
 const ProvideEnvSchema = z.object({
@@ -121,6 +122,7 @@ export class DeploymentsController {
     const deployment = await this.deploymentService.startDeployment({
       userId,
       repositoryId: parsed.data.repositoryId,
+      ...(parsed.data.envVars?.length ? { prefilledEnvVars: parsed.data.envVars } : {}),
     });
 
     res.status(201).json({ deploymentId: deployment.id, status: deployment.status });

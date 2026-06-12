@@ -1,7 +1,10 @@
 import type { Request, Response } from "express";
 import type { IDeploymentRepository } from "../../../domain/deployment/DeploymentRepository.interface";
+import type { IRepositoryRepository } from "../../../domain/repository/Repository";
+import type { IntegrationService } from "../../../application/services/IntegrationService";
 import type { Queue } from "bullmq";
 import type { DeploymentJobData, DeploymentJobName } from "../../../infrastructure/queue/DeploymentQueue";
+import { enqueueAnalysis, enqueueDeploy } from "../../../infrastructure/queue/DeploymentQueue";
 import { env } from "../../../config/env";
 import { logger } from "../../../shared/logger/logger";
 import crypto from "crypto";
@@ -9,7 +12,9 @@ import crypto from "crypto";
 export class WebhooksController {
   constructor(
     private readonly deploymentRepository: IDeploymentRepository,
+    private readonly repositoryRepository: IRepositoryRepository,
     private readonly queue: Queue<DeploymentJobData, void, DeploymentJobName>,
+    private readonly integrationService: IntegrationService,
   ) {}
 
   /**
@@ -25,17 +30,21 @@ export class WebhooksController {
 
     const event = req.body as {
       type?: string;
-      payload?: { deploymentId?: string; readyState?: string; projectId?: string };
+      payload?: {
+        deploymentId?: string;
+        readyState?: string;
+        projectId?: string;
+        // integration-configuration.removed
+        configurationId?: string;
+        installationId?: string;
+      };
     };
 
-    logger.info("Vercel webhook received", {
-      type: event.type,
-      readyState: event.payload?.readyState,
-    });
+    logger.info("Vercel webhook received", { type: event.type });
 
+    // Deployment state changes
     if (event.type === "deployment" && event.payload?.deploymentId) {
       const { deploymentId: vercelDeployId, readyState } = event.payload;
-
       const deployment = await this.deploymentRepository.findByVercelDeployId(vercelDeployId);
       if (deployment) {
         if (readyState === "READY") {
@@ -54,6 +63,15 @@ export class WebhooksController {
             completedAt: new Date(),
           });
         }
+      }
+    }
+
+    // User uninstalled the deplo.ai integration from their Vercel dashboard
+    if (event.type === "integration-configuration.removed") {
+      const installationId =
+        event.payload?.configurationId ?? event.payload?.installationId;
+      if (installationId) {
+        await this.integrationService.disconnectByInstallationId(installationId);
       }
     }
 
@@ -109,7 +127,94 @@ export class WebhooksController {
     res.json({ received: true });
   };
 
+  /**
+   * POST /api/v1/webhooks/github
+   * GitHub push events → auto-redeploy with the same configuration as the last successful run.
+   */
+  github = async (req: Request, res: Response): Promise<void> => {
+    const rawBody = JSON.stringify(req.body);
+    if (!this.verifyGitHubSignature(req, rawBody)) {
+      res.status(401).json({ error: "Invalid signature" });
+      return;
+    }
+
+    const event = req.headers["x-github-event"] as string | undefined;
+    if (event !== "push") {
+      res.json({ received: true });
+      return;
+    }
+
+    const payload = req.body as {
+      ref?: string;
+      repository?: { full_name?: string };
+    };
+    const fullName = payload.repository?.full_name;
+    const ref = payload.ref;
+
+    if (!fullName || !ref) {
+      res.json({ received: true });
+      return;
+    }
+
+    const branch = ref.replace(/^refs\/heads\//, "");
+    logger.info("GitHub push webhook received", { fullName, branch });
+
+    const repository = await this.repositoryRepository.findByFullName(fullName);
+    if (!repository) {
+      res.json({ received: true });
+      return;
+    }
+
+    // Find the latest completed deployment to reuse its stack/env vars
+    const previous = await this.deploymentRepository.findLatestByRepoFullNameAndBranch(
+      fullName,
+      branch,
+    );
+
+    const deployment = await this.deploymentRepository.create({
+      userId: repository.userId,
+      repositoryId: repository.id,
+      branch,
+    });
+
+    if (previous?.detectedStack && previous.envVariables.length > 0) {
+      // Reuse configuration — skip straight to deploy
+      await this.deploymentRepository.update(deployment.id, {
+        detectedStack: previous.detectedStack,
+        envVariables: previous.envVariables,
+        status: "DEPLOYING_BACKEND",
+      });
+      await this.deploymentRepository.appendLog(
+        deployment.id,
+        "Auto-redeployment triggered by GitHub push — reusing previous configuration.",
+      );
+      await enqueueDeploy(this.queue, deployment.id);
+    } else {
+      // Fresh deploy — run full analysis first
+      await this.deploymentRepository.appendLog(
+        deployment.id,
+        "Auto-redeployment triggered by GitHub push.",
+      );
+      await enqueueAnalysis(this.queue, deployment.id);
+    }
+
+    logger.info("Auto-redeployment queued", { deploymentId: deployment.id, fullName, branch });
+    res.json({ received: true, deploymentId: deployment.id });
+  };
+
   // ── Signature verification ────────────────────────────────────────────────
+
+  private verifyGitHubSignature(req: Request, body: string): boolean {
+    if (!env.WEBHOOK_SECRET) return true; // skip verification in dev
+    const signature = req.headers["x-hub-signature-256"] as string | undefined;
+    if (!signature) return false;
+    const expected = `sha256=${crypto.createHmac("sha256", env.WEBHOOK_SECRET).update(body).digest("hex")}`;
+    try {
+      return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+    } catch {
+      return false;
+    }
+  }
 
   private verifyVercelSignature(req: Request): boolean {
     if (!env.WEBHOOK_SECRET) return true; // not configured — skip in dev

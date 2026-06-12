@@ -2,10 +2,10 @@ import type { IDeploymentRepository } from "../../domain/deployment/DeploymentRe
 import type { IRepositoryRepository } from "../../domain/repository/Repository";
 import type { IUserRepository } from "../../domain/user/UserRepository.interface";
 import type { AnalysisService } from "../services/AnalysisService";
-import { type VercelAdapter } from "../../infrastructure/vercel/VercelAdapter";
+import type { IntegrationService } from "../services/IntegrationService";
+import { VercelAdapter, type VercelFramework } from "../../infrastructure/vercel/VercelAdapter";
 import type { GitHubAdapter } from "../../infrastructure/github/GitHubAdapter";
 import type { StackType } from "../../domain/deployment/Deployment";
-import type { VercelFramework } from "../../infrastructure/vercel/VercelAdapter";
 import { decrypt } from "../../shared/utils/crypto";
 import { AppError } from "../../shared/errors/AppError";
 import { logger } from "../../shared/logger/logger";
@@ -48,7 +48,7 @@ export class DeploymentOrchestrator {
     private readonly repositoryRepository: IRepositoryRepository,
     private readonly userRepository: IUserRepository,
     private readonly analysisService: AnalysisService,
-    private readonly vercel: VercelAdapter,
+    private readonly integrationService: IntegrationService,
     private readonly github: GitHubAdapter,
   ) {}
 
@@ -84,19 +84,28 @@ export class DeploymentOrchestrator {
       await this.deploymentRepository.appendLog(deploymentId, stackLog);
       logger.info(stackLog, { deploymentId });
 
-      const requiredVars = envVars.filter((v) => v.isRequired);
-      const needsEnv = requiredVars.length > 0;
+      // Merge pre-filled values (provided on the Configure step) into detected vars
+      const preFilledMap = new Map(
+        deployment.envVariables.filter((v) => v.value !== "").map((v) => [v.key, v.value]),
+      );
+      const mergedEnvVars = envVars.map((v) => ({
+        ...v,
+        value: preFilledMap.get(v.key) ?? v.value,
+      }));
+
+      const unsatisfied = mergedEnvVars.filter((v) => v.isRequired && v.value === "");
+      const needsEnv = unsatisfied.length > 0;
 
       await this.deploymentRepository.update(deploymentId, {
         detectedStack: stack,
-        envVariables: envVars,
+        envVariables: mergedEnvVars,
         status: needsEnv ? "WAITING_FOR_ENV" : "DEPLOYING_BACKEND",
       });
 
       if (needsEnv) {
         await this.deploymentRepository.appendLog(
           deploymentId,
-          `Waiting for ${requiredVars.length} required environment variable(s).`,
+          `Waiting for ${unsatisfied.length} required environment variable(s): ${unsatisfied.map((v) => v.key).join(", ")}.`,
         );
       }
 
@@ -122,6 +131,10 @@ export class DeploymentOrchestrator {
 
       const githubToken = decrypt(user.githubAccessToken);
 
+      // Load the user's Vercel credentials — throws if not connected
+      const vercelCreds = await this.integrationService.resolveVercelCredentials(deployment.userId);
+      const vercel = new VercelAdapter(vercelCreds.token, vercelCreds.teamId);
+
       const stack = deployment.detectedStack;
       const hasBackend  = !!stack?.backend;
       const hasFrontend = !!stack?.frontend;
@@ -142,13 +155,18 @@ export class DeploymentOrchestrator {
         return;
       }
 
-      let backendUrl: string | null = null;
+      // Preserve URLs from previous attempts so retries skip already-completed phases
+      let backendUrl: string | null = deployment.backendUrl ?? null;
+
+      // Stable Vercel project domains — computed before any deployment so we can cross-link
+      // frontend ↔ backend (CORS, NEXT_PUBLIC_API_URL) without a chicken-and-egg problem.
+      const backendProjectName  = this.serviceSlug(repository.name, "api");
+      const frontendProjectName = this.serviceSlug(repository.name, "web");
+      const stableBackendUrl    = `https://${backendProjectName}.vercel.app`;
+      const stableFrontendUrl   = `https://${frontendProjectName}.vercel.app`;
 
       // ── Backend (Vercel serverless) ──────────────────────────────────────
-      if (hasBackend) {
-        if (!env.VERCEL_TOKEN) {
-          throw AppError.externalService("Vercel", "VERCEL_TOKEN must be configured");
-        }
+      if (hasBackend && !backendUrl) {
 
         await this.deploymentRepository.update(deploymentId, { status: "DEPLOYING_BACKEND" });
         await this.deploymentRepository.appendLog(deploymentId, "Deploying backend to Vercel (serverless)…");
@@ -165,6 +183,9 @@ export class DeploymentOrchestrator {
           `Downloading ${relevantEntries.length} files${backendSubPath ? ` from ${backendSubPath}/` : ""}…`,
         );
 
+        // Files we always inject — remove originals to prevent duplicates
+        const INJECTED_PATHS = new Set(["vercel.json", "api/index.js", "api/index.ts"]);
+
         const BATCH = 20;
         const backendFiles: Array<{ path: string; content: Buffer }> = [];
         for (let i = 0; i < relevantEntries.length; i += BATCH) {
@@ -176,7 +197,9 @@ export class DeploymentOrchestrator {
             const relativePath = backendSubPath
               ? e.path.slice(`${backendSubPath}/`.length)
               : e.path;
-            backendFiles.push({ path: relativePath, content: buffers[idx]! });
+            if (!INJECTED_PATHS.has(relativePath)) {
+              backendFiles.push({ path: relativePath, content: buffers[idx]! });
+            }
           });
         }
 
@@ -216,21 +239,25 @@ export class DeploymentOrchestrator {
           },
         );
 
-        const backendProjectName = this.serviceSlug(repository.name, "api");
-        const backendEnvVars = [
-          { key: "NODE_ENV", value: "production", target: ["production" as const] },
+        const backendEnvVars: Array<{ key: string; value: string; target: Array<"production"> }> = [
+          { key: "NODE_ENV",      value: "production",      target: ["production"] },
+          // deplo.ai injects the frontend URL so the serverless CORS wrapper can allow it
+          { key: "FRONTEND_URL", value: stableFrontendUrl, target: ["production"] },
           ...envVars
             .filter((v) => !v.isRequired || v.value !== "")
             .map((v) => ({ key: v.key, value: v.value, target: ["production" as const] })),
         ];
 
-        const backendProject = await this.vercel.createProject({
+        const backendProject = await vercel.createProject({
           name: backendProjectName,
           framework: null,
           environmentVariables: backendEnvVars,
         });
 
-        const backendDeploy = await this.vercel.deployFromFiles({
+        // Always upsert env vars — project may already exist from a failed attempt
+        await vercel.upsertProjectEnvVars(backendProject.id, backendEnvVars);
+
+        const backendDeploy = await vercel.deployFromFiles({
           projectId: backendProject.id,
           name: backendProjectName,
           files: backendFiles,
@@ -241,8 +268,8 @@ export class DeploymentOrchestrator {
           `Vercel backend deployment triggered (${backendDeploy.id}). Waiting for build…`,
         );
 
-        const { url: bUrl } = await this.vercel.waitForDeployment(backendDeploy.id);
-        backendUrl = bUrl;
+        await vercel.waitForDeployment(backendDeploy.id);
+        backendUrl = stableBackendUrl;
 
         await this.deploymentRepository.update(deploymentId, {
           backendUrl,
@@ -254,11 +281,7 @@ export class DeploymentOrchestrator {
       }
 
       // ── Frontend (Vercel — file-based) ───────────────────────────────────
-      if (hasFrontend) {
-        if (!env.VERCEL_TOKEN) {
-          throw AppError.externalService("Vercel", "VERCEL_TOKEN must be configured");
-        }
-
+      if (hasFrontend && !deployment.frontendUrl) {
         await this.deploymentRepository.update(deploymentId, { status: "DEPLOYING_FRONTEND" });
         await this.deploymentRepository.appendLog(deploymentId, "Fetching repository files…");
 
@@ -268,6 +291,13 @@ export class DeploymentOrchestrator {
         const relevantEntries = frontendSubPath
           ? treeEntries.filter((e) => e.path.startsWith(`${frontendSubPath}/`))
           : treeEntries;
+
+        if (relevantEntries.length === 0) {
+          throw AppError.externalService(
+            "GitHub",
+            `No files found in ${frontendSubPath ? `${frontendSubPath}/` : "repo root"} — the repository tree may be empty or rate-limited`,
+          );
+        }
 
         await this.deploymentRepository.appendLog(
           deploymentId,
@@ -294,43 +324,41 @@ export class DeploymentOrchestrator {
           `Deploying frontend to Vercel (${deployFiles.length} files)…`,
         );
 
-        const projectName = this.serviceSlug(repository.name, "web");
-        const framework   = toVercelFramework(stack?.frontend ?? null);
+        const framework = toVercelFramework(stack?.frontend ?? null);
 
-        const vercelEnvVars = envVars
-          .filter((v) => !v.isRequired || v.value !== "")
-          .map((v) => ({ key: v.key, value: v.value, target: ["production" as const] }));
-
-        if (backendUrl) {
-          vercelEnvVars.push({
-            key: "NEXT_PUBLIC_API_URL",
-            value: backendUrl,
-            target: ["production"],
-          });
-        }
+        const vercelEnvVars: Array<{ key: string; value: string; target: Array<"production"> }> = [
+          ...envVars
+            .filter((v) => !v.isRequired || v.value !== "")
+            .map((v) => ({ key: v.key, value: v.value, target: ["production" as const] })),
+          // Always set to stable backend URL — fixes stale hash-URL from previous deployments
+          ...(hasBackend ? [{ key: "NEXT_PUBLIC_API_URL", value: stableBackendUrl, target: ["production" as const] }] : []),
+        ];
 
         const createProjectParams: Parameters<VercelAdapter["createProject"]>[0] = {
-          name: projectName,
+          name: frontendProjectName,
           framework,
           environmentVariables: vercelEnvVars,
         };
         if (stack?.buildCommand)  createProjectParams.buildCommand    = stack.buildCommand;
         if (stack?.outputDir)     createProjectParams.outputDirectory = stack.outputDir;
 
-        const project = await this.vercel.createProject(createProjectParams);
+        const project = await vercel.createProject(createProjectParams);
+
+        // Always upsert env vars — project may already exist from a failed attempt
+        await vercel.upsertProjectEnvVars(project.id, vercelEnvVars);
 
         await this.deploymentRepository.update(deploymentId, { vercelProjectId: project.id });
 
         const deployFromFilesParams: Parameters<VercelAdapter["deployFromFiles"]>[0] = {
           projectId: project.id,
-          name: projectName,
+          name: frontendProjectName,
           files: deployFiles,
           framework,
         };
         if (stack?.buildCommand) deployFromFilesParams.buildCommand    = stack.buildCommand;
         if (stack?.outputDir)    deployFromFilesParams.outputDirectory = stack.outputDir;
 
-        const vDeploy = await this.vercel.deployFromFiles(deployFromFilesParams);
+        const vDeploy = await vercel.deployFromFiles(deployFromFilesParams);
 
         await this.deploymentRepository.update(deploymentId, { vercelDeployId: vDeploy.id });
         await this.deploymentRepository.appendLog(
@@ -338,7 +366,8 @@ export class DeploymentOrchestrator {
           `Vercel deployment triggered (${vDeploy.id}). Waiting for build…`,
         );
 
-        const { url: frontendUrl } = await this.vercel.waitForDeployment(vDeploy.id);
+        await vercel.waitForDeployment(vDeploy.id);
+        const frontendUrl = stableFrontendUrl;
 
         await this.deploymentRepository.update(deploymentId, { frontendUrl });
         await this.deploymentRepository.appendLog(deploymentId, `Frontend live at ${frontendUrl}`);
@@ -352,6 +381,9 @@ export class DeploymentOrchestrator {
       });
       await this.deploymentRepository.appendLog(deploymentId, "Deployment completed successfully.");
       logger.info("Deployment completed", { deploymentId });
+
+      // Register GitHub CI/CD webhook (best-effort — never fails the deployment)
+      await this.maybeRegisterWebhook(deploymentId, repository.fullName, githubToken);
     } catch (err) {
       await this.failDeployment(deploymentId, err);
       throw err;
@@ -408,12 +440,110 @@ export class DeploymentOrchestrator {
   private generateServerlessWrapper(entryPath: string, backend: StackType | null): string {
     const importPath = entryPath.startsWith(".") ? entryPath : `../${entryPath}`;
     return [
-      `// Generated by deplo.ai — serverless adapter for ${backend ?? "Express"} backend`,
+      `'use strict';`,
+      `// Generated by deplo.ai — serverless wrapper (${backend ?? "Express"} backend)`,
+      `const http = require('http');`,
       `const serverlessHttp = require('serverless-http');`,
+      ``,
+      `// CORS — injected at wrapper level so it works regardless of user app config.`,
+      `// FRONTEND_URL is set by deplo.ai at deploy time (stable Vercel project domain).`,
+      `const CORS_ORIGIN  = process.env.FRONTEND_URL || null;`,
+      `const CORS_METHODS = 'GET,POST,PUT,PATCH,DELETE,OPTIONS';`,
+      `const CORS_HEADERS = 'Content-Type,Authorization,X-Requested-With,Accept';`,
+      `function setCors(req, res) {`,
+      `  const origin = req.headers['origin'];`,
+      `  if (CORS_ORIGIN) {`,
+      `    if (!origin || origin === CORS_ORIGIN) {`,
+      `      res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);`,
+      `      res.setHeader('Access-Control-Allow-Credentials', 'true');`,
+      `      res.setHeader('Vary', 'Origin');`,
+      `    }`,
+      `  } else if (origin) {`,
+      `    // No FRONTEND_URL set — reflect origin (dev fallback only)`,
+      `    res.setHeader('Access-Control-Allow-Origin', origin);`,
+      `    res.setHeader('Access-Control-Allow-Credentials', 'true');`,
+      `    res.setHeader('Vary', 'Origin');`,
+      `  }`,
+      `  res.setHeader('Access-Control-Allow-Methods', CORS_METHODS);`,
+      `  res.setHeader('Access-Control-Allow-Headers', CORS_HEADERS);`,
+      `}`,
+      ``,
+      `// Most backends use async bootstrap: async function main() { await db.connect(); app.listen(); }`,
+      `// require() is synchronous, so http.createServer is called AFTER require() returns.`,
+      `// We use a Promise so the exported handler can await the app being ready.`,
+      `let _resolveHandler;`,
+      `const _handlerReady = new Promise(function(resolve) { _resolveHandler = resolve; });`,
+      ``,
+      `// Intercept http.createServer — captures the Express/Fastify app no matter how it is created.`,
+      `const _origCreate = http.createServer;`,
+      `http.createServer = function() {`,
+      `  const args = Array.prototype.slice.call(arguments);`,
+      `  const server = _origCreate.apply(http, args);`,
+      `  if (typeof args[0] === 'function') _resolveHandler(args[0]);`,
+      `  // Stub listen() — serverless has no persistent port`,
+      `  server.listen = function(port, host, cb) {`,
+      `    const done = typeof port === 'function' ? port`,
+      `      : typeof host === 'function' ? host`,
+      `      : typeof cb === 'function' ? cb : null;`,
+      `    if (done) setImmediate(done);`,
+      `    return server;`,
+      `  };`,
+      `  return server;`,
+      `};`,
+      ``,
+      `// Load the user's app — triggers the async bootstrap`,
       `const mod = require('${importPath}');`,
-      `const app = mod.default || mod.app || mod.fastify || mod;`,
-      `module.exports = serverlessHttp(app);`,
+      ``,
+      `// If the app exports its handler directly (no listen call), resolve immediately`,
+      `const _exported = mod && typeof mod === 'object'`,
+      `  ? (mod.default || mod.app || mod.handler || mod.fastify)`,
+      `  : null;`,
+      `if (typeof _exported === 'function') _resolveHandler(_exported);`,
+      ``,
+      `// Cache the serverless-wrapped handler after first init`,
+      `let _wrapped = null;`,
+      ``,
+      `// Async handler — waits for the app to finish its async startup before serving.`,
+      `// Handles: await db.connect(), await redis.connect(), etc. before app.listen().`,
+      `module.exports = async function handler(req, res) {`,
+      `  setCors(req, res);`,
+      `  // Short-circuit OPTIONS preflight without delegating to the user's app`,
+      `  if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }`,
+      `  if (!_wrapped) {`,
+      `    const app = await Promise.race([`,
+      `      _handlerReady,`,
+      `      new Promise(function(_, reject) {`,
+      `        setTimeout(function() {`,
+      `          reject(new Error('[deplo.ai] App startup timed out (30s). Verify DB_URL, REDIS_URL and other required env vars are set.'));`,
+      `        }, 30000);`,
+      `      }),`,
+      `    ]);`,
+      `    _wrapped = serverlessHttp(app);`,
+      `  }`,
+      `  return _wrapped(req, res);`,
+      `};`,
     ].join("\n") + "\n";
+  }
+
+  private async maybeRegisterWebhook(
+    deploymentId: string,
+    repoFullName: string,
+    githubToken: string,
+  ): Promise<void> {
+    if (!env.PUBLIC_URL || !env.WEBHOOK_SECRET) return;
+    const webhookUrl = `${env.PUBLIC_URL}/api/${env.API_VERSION}/webhooks/github`;
+    try {
+      await this.github.registerWebhook(githubToken, repoFullName, webhookUrl, env.WEBHOOK_SECRET);
+      await this.deploymentRepository.appendLog(
+        deploymentId,
+        "GitHub webhook registered — future pushes will auto-redeploy.",
+      );
+    } catch (err) {
+      logger.warn("GitHub webhook registration failed (non-fatal)", {
+        deploymentId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
   private async failDeployment(deploymentId: string, err: unknown): Promise<void> {

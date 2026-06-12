@@ -19,16 +19,16 @@ const envSchema = z.object({
   GITHUB_CLIENT_SECRET: z.string().min(1),
   GITHUB_REDIRECT_URI: z.string().url(),
 
-  // Platform service account credentials (deplo.ai's OWN Vercel/Render accounts)
-  VERCEL_TOKEN: z.string().min(1).optional(),
-  VERCEL_TEAM_ID: z.string().optional(),
+  // Vercel Integration OAuth app (registered once by deplo.ai — NOT per-user credentials).
+  // Each user's token is stored encrypted in the ProviderConnection table.
+  VERCEL_CLIENT_ID: z.string().min(1),
+  VERCEL_CLIENT_SECRET: z.string().min(1),
+  VERCEL_INTEGRATION_SLUG: z.string().min(1),
 
-  RENDER_API_KEY: z.string().min(1).optional(),
-  // Render account owner ID — required for service creation.
-  // Get via: GET https://api.render.com/v1/owners with your RENDER_API_KEY.
-  RENDER_OWNER_ID: z.string().min(1).optional(),
+  // Public URL of this server (e.g. https://api.deplo.ai) — used for OAuth callbacks + GitHub webhooks.
+  PUBLIC_URL: z.string().url().optional(),
 
-  // Optional secret for validating webhooks from Vercel/Render.
+  // Optional secret for validating inbound webhooks from GitHub.
   WEBHOOK_SECRET: z.string().min(16).optional(),
 
   ENCRYPTION_KEY: z.string().min(64),

@@ -37,6 +37,10 @@ export class DeploymentRepository implements IDeploymentRepository {
       detectedStack: row.detectedStack as DetectedStack | null,
       envVariables: (row.envVariables as EnvVariable[]) ?? [],
       logs: (row.logs as string[]) ?? [],
+      // Neon driver can return DateTime as ISO strings — always coerce to Date
+      completedAt: row.completedAt ? new Date(row.completedAt) : null,
+      createdAt: new Date(row.createdAt),
+      updatedAt: new Date(row.updatedAt),
     };
   }
 
@@ -71,6 +75,17 @@ export class DeploymentRepository implements IDeploymentRepository {
   async findByRenderServiceId(renderServiceId: string): Promise<Deployment | null> {
     const row = await this.prisma.deployment.findFirst({
       where: { renderServiceId },
+    });
+    return row ? this.mapRow(row) : null;
+  }
+
+  async findLatestByRepoFullNameAndBranch(
+    fullName: string,
+    branch: string,
+  ): Promise<Deployment | null> {
+    const row = await this.prisma.deployment.findFirst({
+      where: { branch, status: "COMPLETED", repository: { fullName } },
+      orderBy: { createdAt: "desc" },
     });
     return row ? this.mapRow(row) : null;
   }

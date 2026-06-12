@@ -46,6 +46,8 @@ export class DeploymentService {
   async startDeployment(params: {
     userId: string;
     repositoryId: string;
+    /** Env vars collected on the Configure step before deployment starts. */
+    prefilledEnvVars?: Array<{ key: string; value: string }>;
   }): Promise<Deployment> {
     const user = await this.userRepository.findById(params.userId);
     if (!user) throw AppError.notFound("User");
@@ -54,14 +56,23 @@ export class DeploymentService {
     if (!repository) throw AppError.notFound("Repository");
     if (repository.userId !== params.userId) throw AppError.forbidden();
 
-    const deployment = await this.deploymentRepository.create({
+    let deployment = await this.deploymentRepository.create({
       userId: params.userId,
       repositoryId: params.repositoryId,
       branch: repository.defaultBranch,
     });
 
-    await this.deploymentRepository.appendLog(deployment.id, "Deployment queued.");
+    // Store pre-filled env vars immediately so analysis can skip WAITING_FOR_ENV
+    if (params.prefilledEnvVars?.length) {
+      const prefilledList: EnvVariable[] = params.prefilledEnvVars
+        .filter((v) => v.key.trim() !== "")
+        .map((v) => ({ key: v.key, value: v.value, isRequired: false, source: "dotenv" as const }));
+      deployment = await this.deploymentRepository.update(deployment.id, {
+        envVariables: prefilledList,
+      });
+    }
 
+    await this.deploymentRepository.appendLog(deployment.id, "Deployment queued.");
     await enqueueAnalysis(this.queue, deployment.id);
     logger.info("Deployment queued", { deploymentId: deployment.id, repositoryId: params.repositoryId });
 

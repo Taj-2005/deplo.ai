@@ -8,6 +8,7 @@ import {
   Layers,
   History,
   Settings,
+  Plug2,
   Plus,
   FileText,
   LogOut,
@@ -18,6 +19,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Overview", exact: true },
   { href: "/dashboard/repositories", icon: Layers, label: "Projects", exact: false },
   { href: "/dashboard/deployments", icon: History, label: "History", exact: false },
+  { href: "/dashboard/integrations", icon: Plug2, label: "Integrations", exact: false },
   { href: "/dashboard/settings", icon: Settings, label: "Settings", exact: false },
 ] as const;
 

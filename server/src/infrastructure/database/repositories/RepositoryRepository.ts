@@ -8,6 +8,10 @@ export class RepositoryRepository implements IRepositoryRepository {
     return this.prisma.repository.findUnique({ where: { id } }) as Promise<Repository | null>;
   }
 
+  async findByFullName(fullName: string): Promise<Repository | null> {
+    return this.prisma.repository.findFirst({ where: { fullName } }) as Promise<Repository | null>;
+  }
+
   async findByGithubRepoId(githubRepoId: string): Promise<Repository | null> {
     return this.prisma.repository.findUnique({ where: { githubRepoId } }) as Promise<Repository | null>;
   }
