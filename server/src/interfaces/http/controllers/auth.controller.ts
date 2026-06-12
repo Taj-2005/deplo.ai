@@ -10,8 +10,11 @@ export class AuthController {
     const params = new URLSearchParams({
       client_id: env.GITHUB_CLIENT_ID,
       redirect_uri: env.GITHUB_REDIRECT_URI,
+      // repo          — read/write repos + hooks for user-owned repos
+      // admin:repo_hook — create/delete hooks (org repos + extra safety for user repos)
+      // read:user + user:email — profile and email access
+      scope: "read:user user:email repo admin:repo_hook",
     });
-    // GitHub App permissions are configured on the app — no scope query param needed
     res.redirect(`https://github.com/login/oauth/authorize?${params.toString()}`);
   };
 

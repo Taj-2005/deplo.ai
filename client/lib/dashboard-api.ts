@@ -175,3 +175,28 @@ export async function cancelDeployment(
 ): Promise<{ deploymentId: string; status: string }> {
   return apiFetch(`/deployments/${deploymentId}`, { method: "DELETE" });
 }
+
+// ─── Integrations ─────────────────────────────────────────────────────────────
+
+export interface IntegrationStatus {
+  provider: "VERCEL";
+  connected: boolean;
+  accountName: string | null;
+  teamName: string | null;
+  teamId: string | null;
+  connectedAt: string | null;
+}
+
+export async function getIntegrations(): Promise<IntegrationStatus[]> {
+  const data = await apiFetch<{ integrations: IntegrationStatus[] }>("/integrations");
+  return data.integrations;
+}
+
+export async function disconnectVercel(): Promise<void> {
+  await apiFetch("/integrations/vercel", { method: "DELETE" });
+}
+
+export async function getVercelInstallUrl(): Promise<string> {
+  const data = await apiFetch<{ url: string }>("/integrations/vercel/install-url");
+  return data.url;
+}

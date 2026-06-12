@@ -1,5 +1,4 @@
 import { AppError } from "../../shared/errors/AppError";
-import { env } from "../../config/env";
 import { logger } from "../../shared/logger/logger";
 
 // ─── Response shapes ────────────────────────────────────────────────────────
@@ -151,13 +150,14 @@ export class RenderAdapter {
     path: string,
     body?: unknown,
   ): Promise<T> {
-    if (!env.RENDER_API_KEY) {
+    const renderApiKey = process.env["RENDER_API_KEY"];
+    if (!renderApiKey) {
       throw AppError.externalService("Render", "RENDER_API_KEY not configured");
     }
     const init: RequestInit = {
       method,
       headers: {
-        Authorization: `Bearer ${env.RENDER_API_KEY}`,
+        Authorization: `Bearer ${renderApiKey}`,
         "Content-Type": "application/json",
         Accept: "application/json",
       },

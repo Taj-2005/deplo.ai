@@ -17,6 +17,25 @@ CREATE TABLE "User" (
 );
 
 -- CreateTable
+CREATE TABLE "ProviderConnection" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "provider" TEXT NOT NULL,
+    "providerUserId" TEXT,
+    "providerTeamId" TEXT,
+    "providerTeamName" TEXT,
+    "providerAccountName" TEXT,
+    "installationId" TEXT,
+    "accessTokenEncrypted" TEXT NOT NULL,
+    "metadata" JSONB NOT NULL DEFAULT '{}',
+    "status" TEXT NOT NULL DEFAULT 'ACTIVE',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ProviderConnection_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Repository" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -75,6 +94,15 @@ CREATE INDEX "User_githubId_idx" ON "User"("githubId");
 CREATE INDEX "User_email_idx" ON "User"("email");
 
 -- CreateIndex
+CREATE INDEX "ProviderConnection_userId_idx" ON "ProviderConnection"("userId");
+
+-- CreateIndex
+CREATE INDEX "ProviderConnection_provider_idx" ON "ProviderConnection"("provider");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ProviderConnection_userId_provider_key" ON "ProviderConnection"("userId", "provider");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Repository_githubRepoId_key" ON "Repository"("githubRepoId");
 
 -- CreateIndex
@@ -91,6 +119,9 @@ CREATE INDEX "Deployment_repositoryId_idx" ON "Deployment"("repositoryId");
 
 -- CreateIndex
 CREATE INDEX "Deployment_status_idx" ON "Deployment"("status");
+
+-- AddForeignKey
+ALTER TABLE "ProviderConnection" ADD CONSTRAINT "ProviderConnection_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Repository" ADD CONSTRAINT "Repository_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

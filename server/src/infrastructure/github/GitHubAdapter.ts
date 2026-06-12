@@ -152,23 +152,66 @@ export class GitHubAdapter {
     return Buffer.from(data.content, "base64");
   }
 
-  private async request<T>(path: string, token: string): Promise<T> {
-    const res = await fetch(`${this.apiBase}${path}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-    });
+  /**
+   * Register a `push` webhook on a GitHub repo pointing to the deplo.ai ingest endpoint.
+   * Idempotent — if a webhook for the same URL already exists, GitHub returns 422 and we skip.
+   */
+  async registerWebhook(
+    accessToken: string,
+    fullName: string,
+    webhookUrl: string,
+    secret: string,
+  ): Promise<{ id: number }> {
+    try {
+      const data = await this.request<{ id: number }>(
+        `/repos/${fullName}/hooks`,
+        accessToken,
+        "POST",
+        {
+          name: "web",
+          active: true,
+          events: ["push"],
+          config: { url: webhookUrl, content_type: "json", secret, insecure_ssl: "0" },
+        },
+      );
+      logger.info("GitHub webhook registered", { fullName, webhookId: data.id });
+      return data;
+    } catch (err) {
+      // 422 = webhook already exists for this URL — treat as success
+      if (err instanceof Error && err.message.includes("422")) {
+        logger.info("GitHub webhook already exists, skipping", { fullName });
+        return { id: -1 };
+      }
+      throw err;
+    }
+  }
+
+  private async request<T>(
+    path: string,
+    token: string,
+    method = "GET",
+    body?: unknown,
+  ): Promise<T> {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    };
+    if (body !== undefined) headers["Content-Type"] = "application/json";
+
+    const init: RequestInit = { method, headers };
+    if (body !== undefined) init.body = JSON.stringify(body);
+    const res = await fetch(`${this.apiBase}${path}`, init);
 
     if (!res.ok) {
-      const body = await res.text().catch(() => "");
+      const text = await res.text().catch(() => "");
       throw AppError.externalService(
         "GitHub",
-        `${res.status} ${res.statusText}: ${body}`,
+        `${res.status} ${res.statusText}: ${text}`,
       );
     }
 
+    if (res.status === 204) return undefined as T;
     return res.json() as Promise<T>;
   }
 }

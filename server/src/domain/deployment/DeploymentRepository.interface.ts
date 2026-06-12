@@ -10,6 +10,7 @@ export interface IDeploymentRepository {
   findByRepositoryId(repositoryId: string): Promise<Deployment[]>;
   findByVercelDeployId(vercelDeployId: string): Promise<Deployment | null>;
   findByRenderServiceId(renderServiceId: string): Promise<Deployment | null>;
+  findLatestByRepoFullNameAndBranch(fullName: string, branch: string): Promise<Deployment | null>;
   create(input: CreateDeploymentInput): Promise<Deployment>;
   update(id: string, input: UpdateDeploymentInput): Promise<Deployment>;
   appendLog(id: string, line: string): Promise<void>;

@@ -19,11 +19,34 @@ model User {
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
-  repositories Repository[]
-  deployments  Deployment[]
+  repositories        Repository[]
+  deployments         Deployment[]
+  providerConnections ProviderConnection[]
 
   @@index([githubId])
   @@index([email])
+}
+
+model ProviderConnection {
+  id                   String   @id @default(cuid())
+  userId               String
+  provider             String   // "VERCEL" | "RENDER" | "RAILWAY" | "CLOUDFLARE"
+  providerUserId       String?
+  providerTeamId       String?  // null = personal account
+  providerTeamName     String?
+  providerAccountName  String?  // display name for the connected account
+  installationId       String?
+  accessTokenEncrypted String
+  metadata             Json     @default("{}")
+  status               String   @default("ACTIVE") // "ACTIVE" | "DISCONNECTED"
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId])
+  @@index([provider])
 }
 
 model Repository {

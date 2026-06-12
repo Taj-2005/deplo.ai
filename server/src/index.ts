@@ -20,11 +20,11 @@ import { setupSwagger } from "./interfaces/swagger/swagger";
 import { UserRepository } from "./infrastructure/database/repositories/UserRepository";
 import { DeploymentRepository } from "./infrastructure/database/repositories/DeploymentRepository";
 import { RepositoryRepository } from "./infrastructure/database/repositories/RepositoryRepository";
+import { ProviderConnectionRepository } from "./infrastructure/database/repositories/ProviderConnectionRepository";
 
 // ── Infrastructure ────────────────────────────────────────────────────────────
 import { CacheService } from "./infrastructure/redis/CacheService";
 import { GitHubAdapter } from "./infrastructure/github/GitHubAdapter";
-import { VercelAdapter } from "./infrastructure/vercel/VercelAdapter";
 import { getDeploymentQueue } from "./infrastructure/queue/DeploymentQueue";
 import { createDeploymentWorker } from "./infrastructure/queue/DeploymentWorker";
 
@@ -33,6 +33,7 @@ import { AuthService } from "./application/services/AuthService";
 import { AnalysisService } from "./application/services/AnalysisService";
 import { DeploymentService } from "./application/services/DeploymentService";
 import { RepositoryService } from "./application/services/RepositoryService";
+import { IntegrationService } from "./application/services/IntegrationService";
 import { DeploymentOrchestrator } from "./application/orchestration/DeploymentOrchestrator";
 
 // ── HTTP Controllers ──────────────────────────────────────────────────────────
@@ -42,6 +43,7 @@ import { ReposController } from "./interfaces/http/controllers/repos.controller"
 import { DeploymentsController } from "./interfaces/http/controllers/deployments.controller";
 import { StatsController } from "./interfaces/http/controllers/stats.controller";
 import { WebhooksController } from "./interfaces/http/controllers/webhooks.controller";
+import { IntegrationsController } from "./interfaces/http/controllers/integrations.controller";
 import { createAuthMiddleware } from "./interfaces/http/middleware/auth.middleware";
 import { asyncHandler } from "./shared/utils/asyncHandler";
 
@@ -52,10 +54,9 @@ async function bootstrap(): Promise<void> {
   logger.info("Database connected");
 
   // ── Redis ─────────────────────────────────────────────────────────────────
-  // Two separate connections: cache (normal) and BullMQ worker (maxRetriesPerRequest: null)
   const cacheRedis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 3 });
   const workerRedis = new Redis(env.REDIS_URL, {
-    maxRetriesPerRequest: null, // required by BullMQ
+    maxRetriesPerRequest: null,
     enableReadyCheck: false,
   });
   cacheRedis.on("connect", () => logger.info("Redis: connected"));
@@ -68,15 +69,23 @@ async function bootstrap(): Promise<void> {
   const userRepository = new UserRepository(prisma);
   const deploymentRepository = new DeploymentRepository(prisma);
   const repositoryRepository = new RepositoryRepository(prisma);
+  const providerConnectionRepository = new ProviderConnectionRepository(prisma);
 
   // ── External adapters ─────────────────────────────────────────────────────
   const github = new GitHubAdapter();
-  const vercel = new VercelAdapter();
 
   // ── Application services ──────────────────────────────────────────────────
   const repositoryService = new RepositoryService(repositoryRepository, github, cache);
   const authService = new AuthService(userRepository, repositoryRepository, github, cache);
   const analysisService = new AnalysisService(github);
+
+  const integrationService = new IntegrationService(providerConnectionRepository, {
+    vercelClientId: env.VERCEL_CLIENT_ID,
+    vercelClientSecret: env.VERCEL_CLIENT_SECRET,
+    vercelIntegrationSlug: env.VERCEL_INTEGRATION_SLUG,
+    publicUrl: env.PUBLIC_URL ?? "",
+    jwtSecret: env.JWT_SECRET,
+  });
 
   // ── BullMQ queue + orchestrator ───────────────────────────────────────────
   const deploymentQueue = getDeploymentQueue(workerRedis);
@@ -94,7 +103,7 @@ async function bootstrap(): Promise<void> {
     repositoryRepository,
     userRepository,
     analysisService,
-    vercel,
+    integrationService,
     github,
   );
 
@@ -145,28 +154,39 @@ async function bootstrap(): Promise<void> {
 
   const authController = new AuthController(authService);
   const healthController = new HealthController(prisma, cacheRedis);
-  const reposController = new ReposController(repositoryService, userRepository);
+  const reposController = new ReposController(repositoryService, userRepository, repositoryRepository, analysisService);
   const deploymentsController = new DeploymentsController(
     deploymentService,
     deploymentRepository,
     prisma,
   );
   const statsController = new StatsController(prisma);
-  const webhooksController = new WebhooksController(deploymentRepository, deploymentQueue);
+  const webhooksController = new WebhooksController(
+    deploymentRepository,
+    repositoryRepository,
+    deploymentQueue,
+    integrationService,
+  );
+  const integrationsController = new IntegrationsController(integrationService);
 
-  // Public
+  // ── Public routes ─────────────────────────────────────────────────────────
   api.get("/health", asyncHandler(healthController.check));
   api.get("/auth/github", authController.getGithubOAuthUrl);
   api.get("/auth/github/callback", asyncHandler(authController.handleGithubCallback));
 
-  // Webhooks (no user auth — signature validation is done inside controllers)
-  api.post("/webhooks/vercel", asyncHandler(webhooksController.vercel));
+  // Vercel OAuth callback — public (user identified via signed JWT state param)
+  api.get("/integrations/vercel/callback", asyncHandler(integrationsController.vercelCallback));
 
-  // Protected
+  // Webhooks — no user auth (signature validation inside controllers)
+  api.post("/webhooks/vercel", asyncHandler(webhooksController.vercel));
+  api.post("/webhooks/github", asyncHandler(webhooksController.github));
+
+  // ── Protected routes ──────────────────────────────────────────────────────
   api.use(authMiddleware);
   api.get("/auth/me", asyncHandler(authController.getCurrentUser));
 
   api.get("/repos", asyncHandler(reposController.list));
+  api.get("/repos/:id/analyze", asyncHandler(reposController.analyzeStack));
   api.post("/repos/sync", asyncHandler(reposController.sync));
 
   api.get("/deployments", asyncHandler(deploymentsController.list));
@@ -174,6 +194,10 @@ async function bootstrap(): Promise<void> {
   api.get("/deployments/:id", asyncHandler(deploymentsController.get));
   api.post("/deployments/:id/env", asyncHandler(deploymentsController.provideEnv));
   api.delete("/deployments/:id", asyncHandler(deploymentsController.cancel));
+
+  api.get("/integrations", asyncHandler(integrationsController.list));
+  api.get("/integrations/vercel/install-url", integrationsController.vercelInstallUrl);
+  api.delete("/integrations/vercel", asyncHandler(integrationsController.vercelDisconnect));
 
   api.get("/stats", asyncHandler(statsController.get));
 
