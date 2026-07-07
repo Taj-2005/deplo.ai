@@ -15,7 +15,7 @@ import {
   Rocket,
   GitBranch,
 } from "lucide-react";
-import { analyzeRepository, initiateDeployment, getIntegrations } from "@/lib/dashboard-api";
+import { analyzeRepository, initiateDeployment } from "@/lib/dashboard-api";
 import type { StackAnalysis } from "@/lib/dashboard-api";
 
 // ─── Stepper ──────────────────────────────────────────────────────────────────
@@ -166,18 +166,8 @@ export default function ConfigurePage({
   const [deployError, setDeployError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Guard: require Vercel to be connected before allowing deployment
-    getIntegrations()
-      .then((integrations) => {
-        const vercel = integrations.find((i) => i.provider === "VERCEL");
-        if (!vercel?.connected) {
-          router.replace("/dashboard/integrations?vercel=required");
-          return;
-        }
-        return analyzeRepository(repoId);
-      })
+    analyzeRepository(repoId)
       .then((data) => {
-        if (!data) return;
         setAnalysis(data);
         const init: Record<string, string> = {};
         for (const v of data.envVars) {
@@ -188,7 +178,7 @@ export default function ConfigurePage({
       .catch((err: unknown) => {
         setAnalyzeError(err instanceof Error ? err.message : "Analysis failed");
       });
-  }, [repoId, router]);
+  }, [repoId]);
 
   const required = analysis?.envVars.filter((v) => v.isRequired) ?? [];
   const optional = analysis?.envVars.filter((v) => !v.isRequired) ?? [];
