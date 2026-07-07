@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { CheckCircle2, ChevronRight, Loader2, AlertCircle } from "lucide-react";
@@ -69,7 +69,7 @@ function StepCard({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -184,5 +184,24 @@ export default function OnboardingPage() {
         </p>
       </motion.div>
     </div>
+  );
+}
+
+// ─── Suspense boundary ──────────────────────────────────────────────────────────
+// useSearchParams() requires a Suspense boundary during prerender (Next.js).
+
+function OnboardingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-ds-bg">
+      <div className="w-5 h-5 border-2 border-ds-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<OnboardingFallback />}>
+      <OnboardingContent />
+    </Suspense>
   );
 }
