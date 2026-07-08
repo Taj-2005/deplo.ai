@@ -116,6 +116,9 @@ async function bootstrap(): Promise<void> {
   app.set("trust proxy", 1);
   app.use(helmet());
   app.use(compression());
+  // Browser traffic reaches this server via the frontend's Next.js rewrite proxy
+  // (same-origin to the user), so CORS is a secondary safeguard for any direct
+  // access. Keep the allowlist tight; auth uses Bearer tokens, not cookies.
   app.use(cors({ origin: env.ALLOWED_ORIGINS, credentials: true }));
   app.use(express.json({ limit: "1mb" }));
 

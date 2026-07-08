@@ -1,10 +1,12 @@
 import type { NextConfig } from "next";
 import path from "path";
 
-const apiOrigin =
-  process.env.API_URL ??
-  process.env.NEXT_PUBLIC_API_URL ??
-  "http://127.0.0.1:4000";
+// Backend origin for the Vercel Rewrite Proxy. This is a SERVER-ONLY variable
+// (never exposed to the browser), so the backend URL stays invisible to users.
+//   • Local dev  → unset, defaults to the local API on :4000
+//   • Production → set on Vercel to the Render URL (https://deplo-ai.onrender.com)
+// The browser only ever calls same-origin `/api/*`; Next.js proxies it here.
+const apiOrigin = (process.env.API_URL ?? "http://127.0.0.1:4000").replace(/\/$/, "");
 
 const nextConfig: NextConfig = {
   turbopack: {
@@ -13,9 +15,21 @@ const nextConfig: NextConfig = {
 
   async rewrites() {
     return [
+      // User-facing API — transparently proxied to the backend.
+      // Browser URL stays https://deplo.ai.taj.works/api/*
       {
         source: "/api/:path*",
-        destination: `${apiOrigin.replace(/\/$/, "")}/api/:path*`,
+        destination: `${apiOrigin}/api/:path*`,
+      },
+      // Swagger/OpenAPI docs served by the backend, kept on-domain so the
+      // frontend never links out to the Render URL.
+      {
+        source: "/docs",
+        destination: `${apiOrigin}/docs`,
+      },
+      {
+        source: "/docs/:path*",
+        destination: `${apiOrigin}/docs/:path*`,
       },
     ];
   },
