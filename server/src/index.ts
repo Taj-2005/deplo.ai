@@ -207,7 +207,8 @@ async function bootstrap(): Promise<void> {
   app.use(`/api/${env.API_VERSION}`, api);
 
   // ── Swagger ───────────────────────────────────────────────────────────────
-  setupSwagger(app);
+  // Disabled in production (unauthenticated docs — not exposed publicly).
+  const docsMounted = setupSwagger(app);
 
   // ── Error handler ─────────────────────────────────────────────────────────
   app.use(errorMiddleware);
@@ -217,7 +218,11 @@ async function bootstrap(): Promise<void> {
     logger.info(`Server running on http://localhost:${env.PORT}`);
     logger.info(`GraphQL:  http://localhost:${env.PORT}/graphql`);
     logger.info(`REST:     http://localhost:${env.PORT}/api/${env.API_VERSION}`);
-    logger.info(`API Docs: http://localhost:${env.PORT}/docs`);
+    if (docsMounted) {
+      logger.info(`API Docs: http://localhost:${env.PORT}/docs`);
+    } else {
+      logger.info("API Docs: disabled in production");
+    }
   });
 
   // ── Graceful shutdown ─────────────────────────────────────────────────────

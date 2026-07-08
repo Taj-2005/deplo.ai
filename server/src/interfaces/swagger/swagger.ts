@@ -157,7 +157,17 @@ const definition: swaggerJSDoc.OAS3Definition = {
   },
 };
 
-export function setupSwagger(app: Express): void {
+/**
+ * Mounts Swagger UI at /docs. Returns true if mounted.
+ *
+ * Disabled in production: the docs page is unauthenticated, so exposing the
+ * API surface publicly is avoided in prod. Available in development/test only.
+ */
+export function setupSwagger(app: Express): boolean {
+  if (env.NODE_ENV === "production") {
+    return false;
+  }
+
   const spec = swaggerJSDoc({ definition, apis: [] });
 
   app.use(
@@ -173,4 +183,6 @@ export function setupSwagger(app: Express): void {
       },
     }),
   );
+
+  return true;
 }
