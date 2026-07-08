@@ -100,7 +100,7 @@ export function Sidebar() {
         </Link>
 
         <a
-          href={`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"}/docs`}
+          href="/docs"
           target="_blank"
           rel="noopener noreferrer"
           title="Docs"

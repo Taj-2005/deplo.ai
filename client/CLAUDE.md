@@ -234,6 +234,85 @@ Use CSS variables in `globals.css` for all brand colors. Never hardcode hex in c
 
 ---
 
+## 9.5 API Routing — Vercel Rewrite Proxy (Option 1)
+
+The frontend (Vercel) and backend (Render) live on different hosts, but **users
+only ever see the frontend domain**. All API traffic is proxied through it.
+
+```
+User
+      │
+      ▼
+https://deplo.ai.taj.works
+      │
+      ├── Frontend pages ───────────────► Vercel (Next.js)
+      │
+      └── /api/*  (+ /docs)
+              │
+              ▼
+      Vercel Rewrite Proxy   (next.config.ts → rewrites())
+              │
+              ▼
+https://deplo-ai.onrender.com/api/*   (Render backend)
+```
+
+### Rules
+
+1. **The browser ALWAYS calls same-origin `/api/...`.** It never talks to the
+   Render URL directly. Enforced by `getApiBaseUrl()` in `lib/auth.ts`, which
+   returns `""` (same-origin) in the browser.
+2. **Rewrites do the proxying**, defined in `next.config.ts`:
+   - `/api/:path*`   → `${API_URL}/api/:path*`
+   - `/docs`, `/docs/:path*` → backend Swagger UI (kept on-domain)
+3. **No API logic lives on the frontend.** There are **no** Next.js route
+   handlers under `app/api/` — the rewrite forwards everything, including
+   OAuth redirects (the backend 302s flow back through the proxy untouched).
+4. **Backend origin is a server-only variable.** `API_URL` is **not** prefixed
+   with `NEXT_PUBLIC_`, so it is never shipped to the browser — the Render URL
+   stays invisible. `NEXT_PUBLIC_API_URL` is **not** used for API wiring.
+
+### Request flows
+
+**Development** (`API_URL` unset → defaults to `http://127.0.0.1:4000`):
+```
+Browser → localhost:3000/api/v1/... → (Next rewrite) → 127.0.0.1:4000/api/v1/...
+```
+
+**Production** (`API_URL=https://deplo-ai.onrender.com` on Vercel):
+```
+Browser → deplo.ai.taj.works/api/v1/... → (Vercel rewrite) → deplo-ai.onrender.com/api/v1/...
+```
+
+### Why rewrites (not client-side base URLs or CORS)?
+
+- **Transparent** — users never see the backend host; one domain, no CORS
+  preflights in the browser (requests are same-origin).
+- **Environment-independent frontend** — the same client bundle runs anywhere;
+  only the server-side `API_URL` changes per environment.
+- **Auth-safe** — `Authorization: Bearer <jwt>` headers are forwarded by the
+  proxy; auth uses localStorage tokens (no cookies), so SameSite/secure-cookie
+  concerns do not apply. GitHub OAuth `redirect_uri` targets the **frontend**
+  domain so the callback returns through the proxy.
+
+### What is NOT proxied
+
+External providers that call **us** hit the backend's own public URL directly
+(`PUBLIC_URL`), never the frontend:
+- GitHub webhooks → `PUBLIC_URL/api/v1/webhooks/github`
+- Vercel OAuth/webhooks → `PUBLIC_URL/api/v1/integrations/vercel/callback`
+
+### Deployment considerations
+
+- Vercel: set **`API_URL`** (server-only) to the Render URL. Do **not** set
+  `NEXT_PUBLIC_API_URL` for API wiring.
+- Render: set `ALLOWED_ORIGINS` (canonical frontend origin first) and
+  `GITHUB_REDIRECT_URI` to the frontend callback URL.
+- Rewrites forward status codes, validation errors, auth failures, and 3xx
+  redirects verbatim, so the frontend behaves as if talking to the backend
+  directly.
+
+---
+
 ## 10. SEO Architecture
 
 | Feature | File |
@@ -338,6 +417,10 @@ chore(deps): upgrade framer-motion to 12.39
 - Sensitive vars never logged
 - `.env.example` always up to date with comments
 - Client: only `NEXT_PUBLIC_*` prefix — never put secrets here
+- **Backend origin is server-only:** the client uses `API_URL` (no
+  `NEXT_PUBLIC_` prefix) purely to drive the `next.config.ts` rewrite proxy.
+  It is never shipped to the browser, and the browser always calls same-origin
+  `/api/*`. See §9.5. Do **not** use `NEXT_PUBLIC_API_URL` for API wiring.
 
 ---
 
@@ -426,10 +509,22 @@ cd ../client && npm install && npm run dev  # → localhost:3000
 
 ## 22. Deployment
 
-**Client (Vercel):** Push to `main` → auto-deploys. Set `NEXT_PUBLIC_API_URL` in Vercel env.
+**Client (Vercel):** Push to `main` → auto-deploys. Set **`API_URL`** (server-only)
+to the backend, e.g. `https://deplo-ai.onrender.com`. The browser calls
+same-origin `/api/*`, which Vercel rewrites to `API_URL` (see §9.5). Do **not**
+set `NEXT_PUBLIC_API_URL` for API wiring.
 
-**Server (Render):** Push to `main` → auto-deploys. Render manages `DATABASE_URL` and `REDIS_URL`.
+**Server (Render):** Push to `main` → auto-deploys. Render manages `DATABASE_URL`
+and `REDIS_URL`. Set `ALLOWED_ORIGINS` (canonical frontend origin first),
+`PUBLIC_URL` (the backend's own public URL, for webhooks/OAuth callbacks), and
+`GITHUB_REDIRECT_URI=https://deplo.ai.taj.works/api/v1/auth/github/callback`
+(frontend, proxied).
+
+### Production request flow
+```
+User → https://deplo.ai.taj.works/api/* → Vercel rewrite → https://deplo-ai.onrender.com/api/*
+```
 
 ---
 
-_Last updated: 2026-05-21_
+_Last updated: 2026-07-09_

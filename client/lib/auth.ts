@@ -1,12 +1,21 @@
 const TOKEN_KEY = "deplo_token";
 
-/** Base URL for API calls from the browser. */
+/**
+ * Base URL for API calls.
+ *
+ * The frontend is intentionally environment-independent: the browser ALWAYS
+ * talks to its own origin (`/api/...`), and Next.js rewrites transparently
+ * proxy those requests to the backend (see next.config.ts). The browser never
+ * communicates with the Render URL directly.
+ *
+ * Only server-side rendering (which has no same-origin proxy) targets the
+ * backend directly via the server-only `API_URL`.
+ */
 export function getApiBaseUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
-  if (configured) return configured;
-  // Same-origin — proxied to the server via next.config rewrites
+  // Browser → same-origin; proxied to the backend by next.config rewrites.
   if (typeof window !== "undefined") return "";
-  return "http://127.0.0.1:4000";
+  // Server-side (SSR / build) → hit the backend origin directly.
+  return (process.env.API_URL ?? "http://127.0.0.1:4000").replace(/\/$/, "");
 }
 
 export function getToken(): string | null {
@@ -46,8 +55,7 @@ export function isTokenValid(token: string): boolean {
 }
 
 export function getGithubAuthUrl(): string {
-  const base = getApiBaseUrl();
-  return base
-    ? `${base}/api/v1/auth/github`
-    : "/api/v1/auth/github";
+  // Same-origin — the Next.js rewrite proxies this to the backend, which
+  // 302-redirects the browser to GitHub. Keeps the user on the frontend domain.
+  return `${getApiBaseUrl()}/api/v1/auth/github`;
 }
