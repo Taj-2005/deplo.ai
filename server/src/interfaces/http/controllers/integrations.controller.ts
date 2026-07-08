@@ -47,7 +47,8 @@ export class IntegrationsController {
       res.status(503).json({ error: { message: "PUBLIC_URL not configured — Vercel integration requires a public HTTPS URL" } });
       return;
     }
-    const url = this.integrationService.getVercelInstallUrl(userId);
+    const returnTo = req.query["returnTo"] === "onboarding" ? "onboarding" : "integrations";
+    const url = this.integrationService.getVercelInstallUrl(userId, returnTo);
     res.json({ url });
   };
 
@@ -65,16 +66,16 @@ export class IntegrationsController {
     }
 
     try {
-      await this.integrationService.handleVercelCallback(
+      const result = await this.integrationService.handleVercelCallback(
         code,
         state,
         teamId ?? null,
         configurationId ?? "",
       );
 
-      // Redirect to dashboard integrations page
       const clientUrl = env.ALLOWED_ORIGINS[0] ?? "http://localhost:3000";
-      res.redirect(`${clientUrl}/dashboard/integrations?vercel=connected`);
+      const returnPath = result.returnTo === "onboarding" ? "/onboarding" : "/dashboard/integrations";
+      res.redirect(`${clientUrl}${returnPath}?vercel=connected`);
     } catch (err) {
       logger.error("Vercel OAuth callback failed", {
         error: err instanceof Error ? err.message : String(err),

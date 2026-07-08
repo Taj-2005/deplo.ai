@@ -196,7 +196,7 @@ export async function disconnectVercel(): Promise<void> {
   await apiFetch("/integrations/vercel", { method: "DELETE" });
 }
 
-export async function getVercelInstallUrl(): Promise<string> {
-  const data = await apiFetch<{ url: string }>("/integrations/vercel/install-url");
+export async function getVercelInstallUrl(returnTo: "onboarding" | "integrations" = "integrations"): Promise<string> {
+  const data = await apiFetch<{ url: string }>(`/integrations/vercel/install-url?returnTo=${returnTo}`);
   return data.url;
 }

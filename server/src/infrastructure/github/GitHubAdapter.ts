@@ -74,7 +74,7 @@ export class GitHubAdapter {
 
     while (true) {
       const batch = await this.request<GitHubRepo[]>(
-        `/user/repos?per_page=100&page=${page}&sort=updated`,
+        `/user/repos?per_page=100&page=${page}&sort=updated&visibility=all&affiliation=owner,collaborator,organization_member`,
         accessToken,
       );
       repos.push(...batch);

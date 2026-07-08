@@ -33,8 +33,8 @@ export class IntegrationService {
    * Embeds a short-lived signed JWT as the CSRF state param so we can
    * identify the user on callback without a server-side session.
    */
-  getVercelInstallUrl(userId: string): string {
-    const state = jwt.sign({ userId }, this.config.jwtSecret, { expiresIn: "15m" });
+  getVercelInstallUrl(userId: string, returnTo: "onboarding" | "integrations" = "integrations"): string {
+    const state = jwt.sign({ userId, returnTo }, this.config.jwtSecret, { expiresIn: "15m" });
     return `https://vercel.com/integrations/${this.config.vercelIntegrationSlug}/new?state=${encodeURIComponent(state)}`;
   }
 
@@ -48,12 +48,14 @@ export class IntegrationService {
     state: string,
     teamId: string | null,
     installationId: string,
-  ): Promise<ProviderConnection> {
+  ): Promise<ProviderConnection & { returnTo: "onboarding" | "integrations" }> {
     // Verify CSRF state
     let userId: string;
+    let returnTo: "onboarding" | "integrations" = "integrations";
     try {
-      const payload = jwt.verify(state, this.config.jwtSecret) as { userId: string };
+      const payload = jwt.verify(state, this.config.jwtSecret) as { userId: string; returnTo?: "onboarding" | "integrations" };
       userId = payload.userId;
+      returnTo = payload.returnTo ?? "integrations";
     } catch {
       throw AppError.unauthorized("Invalid or expired integration state. Please try connecting again.");
     }
@@ -103,7 +105,7 @@ export class IntegrationService {
       teamId: resolvedTeamId,
     });
 
-    return connection;
+    return { ...connection, returnTo };
   }
 
   /** List all provider connections for a user (statuses, no tokens). */
