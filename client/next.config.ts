@@ -13,6 +13,12 @@ const nextConfig: NextConfig = {
     root: path.resolve(__dirname),
   },
 
+  // Swagger UI (proxied at /docs) redirects /docs → /docs/. Next.js strips
+  // trailing slashes by default, which would bounce it straight back and cause
+  // an infinite redirect loop. Skipping the redirect lets both forms proxy
+  // through to the backend as-is.
+  skipTrailingSlashRedirect: true,
+
   async rewrites() {
     return [
       // User-facing API — transparently proxied to the backend.
