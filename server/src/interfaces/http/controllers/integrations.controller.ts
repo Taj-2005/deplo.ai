@@ -59,9 +59,25 @@ export class IntegrationsController {
    */
   vercelCallback = async (req: Request, res: Response): Promise<void> => {
     const { code, state, teamId, configurationId } = req.query as Record<string, string | undefined>;
+    const clientUrl = env.ALLOWED_ORIGINS[0] ?? "http://localhost:3000";
+
+    // Log whether Vercel actually reached us and with which params (no secrets).
+    logger.info("Vercel OAuth callback received", {
+      hasCode: Boolean(code),
+      hasState: Boolean(state),
+      hasTeamId: Boolean(teamId),
+      hasConfigurationId: Boolean(configurationId),
+    });
+
+    const failRedirect = (reason: string): void => {
+      // Redirect to onboarding (not the dashboard) so the reason isn't lost to
+      // the dashboard's "not connected → onboarding" bounce, and surface it.
+      res.redirect(`${clientUrl}/onboarding?vercel=error&reason=${encodeURIComponent(reason.slice(0, 200))}`);
+    };
 
     if (!code || !state) {
-      res.status(400).send("Missing code or state parameter.");
+      logger.warn("Vercel callback missing params", { hasCode: Boolean(code), hasState: Boolean(state) });
+      failRedirect("Vercel did not return a code/state. Check the integration's Redirect URL configuration.");
       return;
     }
 
@@ -73,15 +89,12 @@ export class IntegrationsController {
         configurationId ?? "",
       );
 
-      const clientUrl = env.ALLOWED_ORIGINS[0] ?? "http://localhost:3000";
       const returnPath = result.returnTo === "onboarding" ? "/onboarding" : "/dashboard/integrations";
       res.redirect(`${clientUrl}${returnPath}?vercel=connected`);
     } catch (err) {
-      logger.error("Vercel OAuth callback failed", {
-        error: err instanceof Error ? err.message : String(err),
-      });
-      const clientUrl = env.ALLOWED_ORIGINS[0] ?? "http://localhost:3000";
-      res.redirect(`${clientUrl}/dashboard/integrations?vercel=error`);
+      const reason = err instanceof Error ? err.message : String(err);
+      logger.error("Vercel OAuth callback failed", { error: reason });
+      failRedirect(reason);
     }
   };
 

@@ -74,12 +74,16 @@ function OnboardingContent() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
 
-  const [connecting, setConnecting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   // Handle return from Vercel OAuth callback
   const vercelResult = searchParams.get("vercel");
   const vercelConnected = vercelResult === "connected";
+  const vercelError =
+    vercelResult === "error"
+      ? searchParams.get("reason") || "Vercel connection failed. Please try again."
+      : null;
+
+  const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(vercelError);
 
   useEffect(() => {
     if (vercelConnected) {

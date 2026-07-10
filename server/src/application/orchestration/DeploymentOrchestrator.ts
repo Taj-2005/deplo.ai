@@ -71,6 +71,7 @@ export class DeploymentOrchestrator {
       const { stack, envVars } = await this.analysisService.analyzeRepository(
         user.githubAccessToken,
         repository.fullName,
+        deployment.branch,
       );
 
       const frontendLabel = toHumanStack(stack.frontend) ?? "none";

@@ -3,7 +3,9 @@ import tsParser from "@typescript-eslint/parser";
 
 export default [
   {
-    ignores: ["dist/**", "node_modules/**", "coverage/**"],
+    // Test files are excluded from tsconfig (run via ts-jest), so typed
+    // linting cannot cover them — ignore them here to match.
+    ignores: ["dist/**", "node_modules/**", "coverage/**", "**/*.test.ts", "**/*.spec.ts", "**/__tests__/**"],
   },
   {
     files: ["src/**/*.ts"],

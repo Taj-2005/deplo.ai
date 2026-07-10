@@ -25,7 +25,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://deplo.ai.taj.works"),
+  metadataBase: new URL("https://www.deplo.in"),
 
   title: {
     default: "deplo.ai — AI-Powered Deployment Orchestration",
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
     "startup deployment",
   ],
 
-  authors: [{ name: "deplo.ai", url: "https://deplo.ai.taj.works" }],
+  authors: [{ name: "deplo.ai", url: "https://www.deplo.in" }],
   creator: "deplo.ai",
   publisher: "deplo.ai",
   applicationName: "deplo.ai",
@@ -72,7 +72,7 @@ export const metadata: Metadata = {
 
   openGraph: {
     type: "website",
-    url: "https://deplo.ai.taj.works",
+    url: "https://www.deplo.in",
     siteName: "deplo.ai",
     title: "Code goes in. Production URL comes out.",
     description:
@@ -99,7 +99,7 @@ export const metadata: Metadata = {
   },
 
   alternates: {
-    canonical: "https://deplo.ai.taj.works",
+    canonical: "https://www.deplo.in",
   },
 
   icons: {
