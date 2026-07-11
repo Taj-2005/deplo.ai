@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const BASE = "https://deplo.ai.taj.works";
+const BASE = "https://www.deplo.in";
 
 // Only include indexable, live URLs — no hash fragments (not indexable),
 // no future routes until those pages actually exist.

@@ -29,7 +29,7 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
       },
     ],
-    sitemap: "https://deplo.ai.taj.works/sitemap.xml",
-    host: "https://deplo.ai.taj.works",
+    sitemap: "https://www.deplo.in/sitemap.xml",
+    host: "https://www.deplo.in",
   };
 }

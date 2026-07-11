@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       // User-facing API — transparently proxied to the backend.
-      // Browser URL stays https://deplo.ai.taj.works/api/*
+      // Browser URL stays https://www.deplo.in/api/*
       {
         source: "/api/:path*",
         destination: `${apiOrigin}/api/:path*`,

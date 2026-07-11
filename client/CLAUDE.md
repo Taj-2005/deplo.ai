@@ -112,6 +112,56 @@ throw AppError.externalService("GitHub", "API rate limit exceeded");
 
 Never use `throw new Error()` directly in application code.
 
+### 4.5 Repository Analysis Engine (deterministic-first)
+
+The stack-detection engine (`server/src/application/analysis/`, types in
+`server/src/domain/analysis/`) is a **layered, evidence-scored pipeline**.
+Detection is **deterministic first**; AI reasoning is a bounded fallback.
+
+**Pipeline**
+```
+RepoSnapshot (one cached git tree + lazy file reads)
+   │
+   ├─ Layer 2  StructureAnalyzer      → single | frontend-backend | monorepo
+   │                                    (turbo/nx/pnpm/npm/yarn workspaces)
+   ├─ Layer 1  FrameworkDetector      → weighted signatures → scored candidates
+   │           LanguageDetector       → js/ts/python/go/java/html
+   │           ConfidenceEvaluator    → primary framework + escalation flag
+   │
+   ├─ RuntimeResolver                 → language version + package manager
+   ├─ BuildCommandResolver            → install/build/output/start (reads scripts)
+   └─ DeploymentStrategyResolver      → framework → provider preset (abstraction)
+   ↓
+RepositoryAnalysis { structure, components[], confidence, needsAiFallback, evidence }
+```
+
+**Principles**
+- **Never trust a single indicator.** Every framework is a declarative signature
+  in `frameworkSignatures.ts` (dependencies + config files + content patterns +
+  scripts, each weighted). Score is normalised to a 0–1 **confidence**; a
+  meta-framework (Next.js) beats the base library (React) via priority.
+- **Confidence scoring drives escalation.** Below `AI_ESCALATION_THRESHOLD`
+  (0.5) the result sets `needsAiFallback = true` (Layer 3 — Groq — is Phase 2).
+- **Tree-driven, not filename-guessing.** Structure and workspaces come from the
+  full recursive tree, so Python/Go/Java repos and `apps/*` monorepos are seen.
+- **Adding a framework is data**, not new control flow — extend the signature
+  registry (and optionally `PROVIDER_RULES`).
+- **Provider abstraction is centralised** in `DeploymentStrategyResolver`
+  (`PROVIDER_RULES`), never scattered across the orchestrator.
+- **Backward compatible:** `legacyMapper.toDetectedStack()` projects the rich
+  analysis onto the existing `DetectedStack` so the current deploy path is
+  unchanged. `AnalysisService` returns `{ stack, envVars, analysis }`.
+
+**Detection coverage** — Frontend: Next.js, React, Vite, Vue, Nuxt, Angular,
+Astro, Svelte/SvelteKit, Remix, Gatsby, static HTML. Backend: Express, Fastify,
+NestJS, Hono, Koa, FastAPI, Flask, Django, Spring Boot, Go, Bun.
+
+**Deployable today** (Phase 1): Next.js, Vite/React (→ Vercel), Express, Fastify
+(→ Vercel serverless). Everything else is **detected with a correct strategy**
+but marked `deployable: false` (`strategy.notes` explains). Broadening deploy
+targets (Render for Python/Go/Java) and wiring **Groq** (Layer 3 reasoning +
+error-driven retry, max 2 AI attempts) are **Phase 2**.
+
 ---
 
 ## 5. GraphQL Architecture
@@ -243,7 +293,7 @@ only ever see the frontend domain**. All API traffic is proxied through it.
 User
       │
       ▼
-https://deplo.ai.taj.works
+https://www.deplo.in
       │
       ├── Frontend pages ───────────────► Vercel (Next.js)
       │
@@ -280,7 +330,7 @@ Browser → localhost:3000/api/v1/... → (Next rewrite) → 127.0.0.1:4000/api/
 
 **Production** (`API_URL=https://deplo-ai.onrender.com` on Vercel):
 ```
-Browser → deplo.ai.taj.works/api/v1/... → (Vercel rewrite) → deplo-ai.onrender.com/api/v1/...
+Browser → www.deplo.in/api/v1/... → (Vercel rewrite) → deplo-ai.onrender.com/api/v1/...
 ```
 
 ### Why rewrites (not client-side base URLs or CORS)?
@@ -517,12 +567,12 @@ set `NEXT_PUBLIC_API_URL` for API wiring.
 **Server (Render):** Push to `main` → auto-deploys. Render manages `DATABASE_URL`
 and `REDIS_URL`. Set `ALLOWED_ORIGINS` (canonical frontend origin first),
 `PUBLIC_URL` (the backend's own public URL, for webhooks/OAuth callbacks), and
-`GITHUB_REDIRECT_URI=https://deplo.ai.taj.works/api/v1/auth/github/callback`
+`GITHUB_REDIRECT_URI=https://www.deplo.in/api/v1/auth/github/callback`
 (frontend, proxied).
 
 ### Production request flow
 ```
-User → https://deplo.ai.taj.works/api/* → Vercel rewrite → https://deplo-ai.onrender.com/api/*
+User → https://www.deplo.in/api/* → Vercel rewrite → https://deplo-ai.onrender.com/api/*
 ```
 
 ---

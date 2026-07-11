@@ -6,7 +6,7 @@ const softwareApplication = {
   operatingSystem: "Web",
   description:
     "AI-powered deployment orchestration platform. Connect your GitHub repo and deplo.ai detects your stack, deploys frontend to Vercel and backend to Render, syncs environment variables, and returns production-ready URLs in under 3 minutes.",
-  url: "https://deplo.ai.taj.works",
+  url: "https://www.deplo.in",
   offers: {
     "@type": "Offer",
     price: "0",
@@ -22,7 +22,7 @@ const softwareApplication = {
     "Frontend and Backend Deployment",
     "Production URL Generation",
   ],
-  screenshot: "https://deplo.ai.taj.works/og.png",
+  screenshot: "https://www.deplo.in/og.png",
   softwareVersion: "1.0",
   releaseNotes: "MVP release — GitHub to production in under 3 minutes",
 };
@@ -31,8 +31,8 @@ const organization = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "deplo.ai",
-  url: "https://deplo.ai.taj.works",
-  logo: "https://deplo.ai.taj.works/logo.png",
+  url: "https://www.deplo.in",
+  logo: "https://www.deplo.in/logo.png",
   description:
     "deplo.ai is an AI-powered deployment orchestration platform that connects GitHub repositories to production infrastructure — automatically deploying frontend apps to Vercel and backend services to Render without any DevOps expertise required.",
   foundingDate: "2024",
@@ -43,7 +43,7 @@ const webSite = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   name: "deplo.ai",
-  url: "https://deplo.ai.taj.works",
+  url: "https://www.deplo.in",
   description:
     "AI-powered deployment orchestration. Connect GitHub. Get production URLs.",
 };

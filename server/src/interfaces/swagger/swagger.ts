@@ -10,7 +10,7 @@ const definition: swaggerJSDoc.OAS3Definition = {
     version: "1.0.0",
     description:
       "REST fallback + health endpoints for deplo.ai. Primary API surface is GraphQL at /graphql.",
-    contact: { name: "deplo.ai", url: "https://deplo.ai.taj.works" },
+    contact: { name: "deplo.ai", url: "https://www.deplo.in" },
   },
   servers: [
     {

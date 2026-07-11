@@ -49,7 +49,11 @@ export class ReposController {
     if (!repo) { res.status(404).json({ error: { message: "Repository not found" } }); return; }
     if (repo.userId !== userId) { res.status(403).json({ error: { message: "Forbidden" } }); return; }
 
-    const { stack, envVars } = await this.analysisService.analyzeRepository(user.githubAccessToken, repo.fullName);
+    const { stack, envVars, analysis } = await this.analysisService.analyzeRepository(
+      user.githubAccessToken,
+      repo.fullName,
+      repo.defaultBranch,
+    );
 
     logger.info("Stack analysis complete", { userId, repoId, frontend: stack.frontend, backend: stack.backend });
 
@@ -61,6 +65,26 @@ export class ReposController {
         backendPath: stack.backendPath,
         buildCommand: stack.buildCommand,
         packageManager: stack.packageManager,
+      },
+      // Rich Phase-1 analysis (structure, per-component frameworks, confidence,
+      // deployment strategy). Additive — existing clients ignore it.
+      analysis: {
+        structure: analysis.structure.kind,
+        primaryLanguage: analysis.primaryLanguage,
+        overallConfidence: analysis.overallConfidence,
+        needsAiFallback: analysis.needsAiFallback,
+        components: analysis.components.map((c) => ({
+          path: c.path,
+          role: c.role,
+          framework: c.framework.framework,
+          language: c.framework.language,
+          confidence: c.framework.confidence,
+          deployable: c.strategy.deployable,
+          provider: c.strategy.provider,
+          buildCommand: c.strategy.buildCommand,
+          outputDirectory: c.strategy.outputDirectory,
+          startCommand: c.strategy.startCommand,
+        })),
       },
       envVars: envVars.map((v) => ({
         key: v.key,
