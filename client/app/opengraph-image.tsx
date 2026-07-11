@@ -11,7 +11,10 @@ export const alt = "deplo.ai — Code goes in. Production URL comes out.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function OgImage() {
+export default async function OgImage() {
+  // Colocated brand logo, bundled with the route (works on the edge runtime).
+  const logo = await fetch(new URL("./og-logo.png", import.meta.url)).then((res) => res.arrayBuffer());
+
   return new ImageResponse(
     (
       <div
@@ -31,22 +34,14 @@ export default function OgImage() {
       >
         {/* Top — wordmark */}
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: "linear-gradient(135deg, #00d2ff, #7928ca)",
-              color: "#ffffff",
-              fontSize: 26,
-              fontWeight: 800,
-            }}
-          >
-            ▲
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element -- Satori requires <img> */}
+          <img
+            src={logo as unknown as string}
+            width={48}
+            height={48}
+            style={{ borderRadius: 10 }}
+            alt=""
+          />
           <div style={{ display: "flex", fontSize: 34, fontWeight: 700, color: "#ffffff", letterSpacing: -1 }}>
             deplo.ai
           </div>
