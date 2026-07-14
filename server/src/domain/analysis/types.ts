@@ -164,6 +164,42 @@ export interface RepositoryAnalysis {
   needsAiFallback: boolean;
   /** Aggregated top-level reasoning trail. */
   evidence: Evidence[];
+  /** True when AI reasoning (Layer 3) contributed to this result. */
+  aiUsed?: boolean;
+}
+
+// ─── AI reasoning (Layer 3) results ──────────────────────────────────────────
+
+/** One component's corrected analysis as returned by the LLM. */
+export interface AiComponentReasoning {
+  path: string;
+  role: "frontend" | "backend";
+  framework: string;
+  language: string;
+  installCommand: string | null;
+  buildCommand: string | null;
+  outputDirectory: string | null;
+  startCommand: string | null;
+  confidence: number;
+  reasoning: string;
+}
+
+/** AI attempt #1 — full-repo reasoning when deterministic confidence is low. */
+export interface AiRepoReasoning {
+  components: AiComponentReasoning[];
+  summary: string;
+}
+
+/** AI attempt #2 — error-driven diagnosis after a failed deployment. */
+export interface AiFailureDiagnosis {
+  likelyCause: string;
+  frameworkMisidentified: boolean;
+  correctedFramework: string | null;
+  correctedBuildCommand: string | null;
+  correctedStartCommand: string | null;
+  correctedOutputDirectory: string | null;
+  recommendation: string;
+  confidence: number;
 }
 
 /** Confidence threshold below which the pipeline escalates to AI reasoning. */

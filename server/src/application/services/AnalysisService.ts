@@ -3,6 +3,7 @@ import { RepoSourceAdapter } from "../../infrastructure/github/RepoSourceAdapter
 import type { DetectedStack, EnvVariable } from "../../domain/deployment/Deployment";
 import type { RepositoryAnalysis } from "../../domain/analysis/types";
 import { RepositoryAnalyzer } from "../analysis/RepositoryAnalyzer";
+import { GroqReasoningService } from "../analysis/GroqReasoningService";
 import { RepoSnapshot } from "../analysis/ports";
 import { toDetectedStack } from "../analysis/legacyMapper";
 import { decrypt } from "../../shared/utils/crypto";
@@ -104,7 +105,11 @@ export interface RepositoryAnalysisResult {
  * collection scans the detected component directories.
  */
 export class AnalysisService {
-  constructor(private readonly github: GitHubAdapter) {}
+  constructor(
+    private readonly github: GitHubAdapter,
+    /** Optional Layer 3 AI fallback — engine is deterministic-only without it. */
+    private readonly reasoning: GroqReasoningService | null = null,
+  ) {}
 
   async analyzeRepository(
     encryptedToken: string,
@@ -116,7 +121,17 @@ export class AnalysisService {
     // Layered deterministic analysis over a single cached repo snapshot.
     const source = new RepoSourceAdapter(this.github, token, fullName, ref);
     const snapshot = new RepoSnapshot(source);
-    const analysis = await new RepositoryAnalyzer(snapshot).analyze();
+    let analysis = await new RepositoryAnalyzer(snapshot).analyze();
+
+    // Layer 3 — single bounded AI attempt when deterministic confidence is low.
+    if (analysis.needsAiFallback && this.reasoning) {
+      logger.info("Deterministic confidence low — escalating to Groq", {
+        fullName,
+        confidence: Number(analysis.overallConfidence.toFixed(2)),
+      });
+      analysis = await this.reasoning.reasonAboutRepository(snapshot, analysis);
+    }
+
     const stack = toDetectedStack(analysis);
 
     logger.info("Repository analysis complete", {
@@ -126,6 +141,7 @@ export class AnalysisService {
       backend: stack.backend,
       confidence: Number(analysis.overallConfidence.toFixed(2)),
       needsAiFallback: analysis.needsAiFallback,
+      aiUsed: analysis.aiUsed ?? false,
     });
 
     // Collect env vars across root + every detected component directory.

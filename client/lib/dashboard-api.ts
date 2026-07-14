@@ -179,7 +179,7 @@ export async function cancelDeployment(
 // ─── Integrations ─────────────────────────────────────────────────────────────
 
 export interface IntegrationStatus {
-  provider: "VERCEL";
+  provider: "VERCEL" | "RENDER";
   connected: boolean;
   accountName: string | null;
   teamName: string | null;
@@ -199,4 +199,24 @@ export async function disconnectVercel(): Promise<void> {
 export async function getVercelInstallUrl(returnTo: "onboarding" | "integrations" = "integrations"): Promise<string> {
   const data = await apiFetch<{ url: string }>(`/integrations/vercel/install-url?returnTo=${returnTo}`);
   return data.url;
+}
+
+/**
+ * Connect Render by validating + storing a Personal API Key.
+ * The key is sent once over HTTPS, validated server-side against the Render
+ * API, stored encrypted, and never returned again.
+ */
+export async function connectRender(apiKey: string): Promise<{
+  connected: boolean;
+  accountName: string | null;
+  teamName: string | null;
+}> {
+  return apiFetch("/integrations/render", {
+    method: "POST",
+    body: JSON.stringify({ apiKey }),
+  });
+}
+
+export async function disconnectRender(): Promise<void> {
+  await apiFetch("/integrations/render", { method: "DELETE" });
 }

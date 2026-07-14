@@ -2,6 +2,7 @@ import type { IDeploymentRepository } from "../../domain/deployment/DeploymentRe
 import type { IRepositoryRepository } from "../../domain/repository/Repository";
 import type { IUserRepository } from "../../domain/user/UserRepository.interface";
 import type { AnalysisService } from "../services/AnalysisService";
+import type { GroqReasoningService } from "../analysis/GroqReasoningService";
 import type { IntegrationService } from "../services/IntegrationService";
 import { VercelAdapter, type VercelFramework } from "../../infrastructure/vercel/VercelAdapter";
 import type { GitHubAdapter } from "../../infrastructure/github/GitHubAdapter";
@@ -50,6 +51,8 @@ export class DeploymentOrchestrator {
     private readonly analysisService: AnalysisService,
     private readonly integrationService: IntegrationService,
     private readonly github: GitHubAdapter,
+    /** Optional Layer 3 AI — diagnoses failed deployments (one call max). */
+    private readonly reasoning: GroqReasoningService | null = null,
   ) {}
 
   // ── Phase 1: analyze ──────────────────────────────────────────────────────
@@ -556,6 +559,48 @@ export class DeploymentOrchestrator {
     await this.deploymentRepository
       .appendLog(deploymentId, `FAILED: ${message}`)
       .catch(() => undefined);
+
+    // Layer 3, attempt #2 — one bounded AI diagnosis of the failure. Runs once
+    // per deployment (failDeployment is terminal) and never throws.
+    await this.diagnoseFailure(deploymentId, message).catch(() => undefined);
+  }
+
+  /** Best-effort AI failure diagnosis appended to the deployment logs. */
+  private async diagnoseFailure(deploymentId: string, errorMessage: string): Promise<void> {
+    if (!this.reasoning) return;
+
+    const deployment = await this.deploymentRepository.findById(deploymentId);
+    if (!deployment) return;
+
+    const s = deployment.detectedStack;
+    const stackSummary = s
+      ? `frontend=${s.frontend ?? "none"}${s.frontendPath ? ` (${s.frontendPath}/)` : ""}, ` +
+        `backend=${s.backend ?? "none"}${s.backendPath ? ` (${s.backendPath}/)` : ""}, ` +
+        `build=${s.buildCommand ?? "-"}, outputDir=${s.outputDir ?? "-"}, pm=${s.packageManager}`
+      : "(no stack detected)";
+
+    const diagnosis = await this.reasoning.diagnoseDeploymentFailure({
+      errorMessage,
+      logs: deployment.logs,
+      analysis: null,
+      stackSummary,
+    });
+    if (!diagnosis) return;
+
+    const lines = [
+      `AI diagnosis: ${diagnosis.likelyCause}`,
+      diagnosis.frameworkMisidentified && diagnosis.correctedFramework
+        ? `AI suggests the stack was misidentified — likely ${diagnosis.correctedFramework}.`
+        : null,
+      diagnosis.correctedBuildCommand ? `Suggested build command: ${diagnosis.correctedBuildCommand}` : null,
+      diagnosis.correctedStartCommand ? `Suggested start command: ${diagnosis.correctedStartCommand}` : null,
+      diagnosis.correctedOutputDirectory ? `Suggested output directory: ${diagnosis.correctedOutputDirectory}` : null,
+      `Recommendation: ${diagnosis.recommendation}`,
+    ].filter((l): l is string => Boolean(l));
+
+    for (const line of lines) {
+      await this.deploymentRepository.appendLog(deploymentId, line).catch(() => undefined);
+    }
   }
 
   private serviceSlug(repoName: string, suffix: "api" | "web"): string {

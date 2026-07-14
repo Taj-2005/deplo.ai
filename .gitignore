@@ -9,11 +9,10 @@ dist/
 out/
 
 # Environment files — NEVER commit real .env files
+# *.env catches renamed copies too (e.g. deplo.ai.env, backup.env)
 .env
-.env.local
-.env.development
-.env.production
-.env.test
+*.env
+.env.*
 !.env.example
 
 # Logs

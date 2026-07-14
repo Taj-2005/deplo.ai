@@ -36,4 +36,14 @@ EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD wget -qO- http://localhost:4000/api/v1/health || exit 1
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+# Neon (serverless Postgres) auto-suspends when idle and takes ~5-10s to wake,
+# so the first connection attempt can fail with P1001. Retry the migration with
+# backoff before giving up so cold starts don't crash-loop the container.
+CMD ["sh", "-c", "\
+  for i in 1 2 3 4 5 6; do \
+    npx prisma migrate deploy && exec node dist/index.js; \
+    echo \"prisma migrate deploy failed (attempt $i/6) — database may be waking, retrying in 5s…\"; \
+    sleep 5; \
+  done; \
+  echo 'Database unreachable after 6 attempts — exiting.'; \
+  exit 1"]

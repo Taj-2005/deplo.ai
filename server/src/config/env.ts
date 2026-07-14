@@ -31,6 +31,14 @@ const envSchema = z.object({
   // Optional secret for validating inbound webhooks from GitHub.
   WEBHOOK_SECRET: z.string().min(16).optional(),
 
+  // ── Groq (Layer 3 AI reasoning fallback) ──────────────────────────────────
+  // Optional: without keys the analysis engine stays deterministic-only.
+  // Two keys — the client fails over to the second on 401/403/429/5xx.
+  GROQ_API_TOKEN_1: z.string().min(1).optional(),
+  GROQ_API_TOKEN_2: z.string().min(1).optional(),
+  // Production model with strict JSON-schema structured outputs.
+  GROQ_MODEL: z.string().default("openai/gpt-oss-120b"),
+
   ENCRYPTION_KEY: z.string().min(64),
 
   ALLOWED_ORIGINS: z
