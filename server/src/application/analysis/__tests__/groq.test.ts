@@ -97,7 +97,7 @@ describe("GroqReasoningService merge", () => {
           path: "", role: "backend", framework: "Flask", language: "Python",
           installCommand: "pip install -r requirements.txt", buildCommand: null,
           outputDirectory: null, startCommand: "python serve.py",
-          confidence: 0.8, reasoning: "serve.py uses http.server; closest supported runtime is python.",
+          confidence: 0.8, reasoning: "serve.py uses http.server; closest supported runtime is python.", envVars: [],
         }],
       }),
     );
@@ -138,7 +138,7 @@ describe("GroqReasoningService merge", () => {
         components: [{
           path: "", role: "frontend", framework: "Gatsby", language: "JavaScript",
           installCommand: null, buildCommand: null, outputDirectory: null, startCommand: null,
-          confidence: 0.4, reasoning: "low-confidence hallucination",
+          confidence: 0.4, reasoning: "low-confidence hallucination", envVars: [],
         }],
       }),
     );
@@ -156,7 +156,7 @@ describe("GroqReasoningService merge", () => {
         components: [{
           path: "", role: "backend", framework: "Express", language: "JavaScript",
           installCommand: "npm install", buildCommand: null, outputDirectory: null,
-          startCommand: "node server.js", confidence: 0.9, reasoning: "r",
+          startCommand: "node server.js", confidence: 0.9, reasoning: "r", envVars: [],
         }],
       }),
     );

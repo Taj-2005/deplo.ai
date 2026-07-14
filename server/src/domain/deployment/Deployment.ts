@@ -41,13 +41,23 @@ export interface DetectedStack {
   buildCommand: string | null;
   outputDir: string | null;
   nodeVersion: string | null;
+  /**
+   * Frontend env keys that reference the backend URL (e.g. NEXT_PUBLIC_API_URL,
+   * VITE_API_URL) — auto-injected with the live backend URL at deploy time.
+   */
+  frontendApiKeys?: string[];
 }
+
+/** Which side of the app a variable belongs to — drives per-provider injection. */
+export type EnvScope = "frontend" | "backend" | "shared";
 
 export interface EnvVariable {
   key: string;
   value: string;
   isRequired: boolean;
   source: "process_env" | "import_meta" | "dotenv" | "inferred";
+  /** Optional (older records lack it) — absent means "shared". */
+  scope?: EnvScope;
 }
 
 export interface Deployment {

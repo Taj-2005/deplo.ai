@@ -156,10 +156,15 @@ RepositoryAnalysis { structure, components[], confidence, needsAiFallback, evide
 Astro, Svelte/SvelteKit, Remix, Gatsby, static HTML. Backend: Express, Fastify,
 NestJS, Hono, Koa, FastAPI, Flask, Django, Spring Boot, Go, Bun.
 
-**Deployable today** (Phase 1): Next.js, Vite/React (→ Vercel), Express, Fastify
-(→ Vercel serverless). Everything else is **detected with a correct strategy**
-but marked `deployable: false` (`strategy.notes` explains). Broadening deploy
-targets (Render for Python/Go/Java) is **Phase 3**.
+**Deployable today**: Next.js, Vite/React → the user's **Vercel** account;
+Express, Fastify → a **Render web service in the user's own workspace**
+(per-user API key via `resolveRenderCredentials()`; repo-based deploy with
+`rootDir` for monorepos; **build/start commands read from the repo's own
+package.json scripts** — never guessed; plan `free`). The frontend's
+`NEXT_PUBLIC_API_URL` is set to the live Render URL after the backend goes
+live; the backend gets `FRONTEND_URL` for CORS. Everything else is detected
+with a correct strategy but marked `deployable: false`. Remaining Phase 3:
+Python/Go/Java backends on Render, more Vercel frontend presets.
 
 **Layer 3 — Groq AI fallback (Phase 2, implemented)**
 
