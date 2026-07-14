@@ -46,6 +46,13 @@ export class RenderAdapter {
   private readonly apiBase = "https://api.render.com/v1";
 
   /**
+   * Instantiated with a user's own Render API key (resolved from their
+   * encrypted ProviderConnection) — deployments run inside the user's Render
+   * account, never a global deplo.ai account.
+   */
+  constructor(private readonly apiKey: string) {}
+
+  /**
    * Create a new web service on Render.
    * Returns the created service along with the initial deploy ID.
    */
@@ -150,14 +157,10 @@ export class RenderAdapter {
     path: string,
     body?: unknown,
   ): Promise<T> {
-    const renderApiKey = process.env["RENDER_API_KEY"];
-    if (!renderApiKey) {
-      throw AppError.externalService("Render", "RENDER_API_KEY not configured");
-    }
     const init: RequestInit = {
       method,
       headers: {
-        Authorization: `Bearer ${renderApiKey}`,
+        Authorization: `Bearer ${this.apiKey}`,
         "Content-Type": "application/json",
         Accept: "application/json",
       },

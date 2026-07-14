@@ -17,7 +17,7 @@ export class IntegrationsController {
       const connections = await this.integrationService.listConnections(userId);
 
       // Shape the response — never expose tokens
-      const providers = ["VERCEL"] as const;
+      const providers = ["VERCEL", "RENDER"] as const;
       const result = providers.map((provider) => {
         const conn = connections.find((c) => c.provider === provider);
         return {
@@ -106,6 +106,48 @@ export class IntegrationsController {
     try {
       const userId = req.userId!;
       await this.integrationService.disconnectVercel(userId);
+      res.json({ disconnected: true });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /**
+   * POST /api/v1/integrations/render   body: { apiKey }
+   * Validate a Render Personal API Key against the live Render API and store
+   * it encrypted. Invalid keys are rejected and never persisted. The raw key
+   * is never logged and never echoed back.
+   */
+  renderConnect = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.userId!;
+      const apiKey = (req.body as { apiKey?: unknown })?.apiKey;
+      if (typeof apiKey !== "string") {
+        res.status(400).json({ error: { message: "apiKey is required." } });
+        return;
+      }
+
+      const connection = await this.integrationService.connectRender(userId, apiKey);
+
+      res.json({
+        connected: true,
+        accountName: connection.providerAccountName,
+        teamName: connection.providerTeamName,
+        connectedAt: connection.createdAt,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /**
+   * DELETE /api/v1/integrations/render
+   * User-initiated disconnect from the dashboard.
+   */
+  renderDisconnect = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.userId!;
+      await this.integrationService.disconnectRender(userId);
       res.json({ disconnected: true });
     } catch (err) {
       next(err);

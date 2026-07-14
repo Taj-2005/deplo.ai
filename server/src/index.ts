@@ -212,6 +212,8 @@ async function bootstrap(): Promise<void> {
   api.get("/integrations", asyncHandler(integrationsController.list));
   api.get("/integrations/vercel/install-url", integrationsController.vercelInstallUrl);
   api.delete("/integrations/vercel", asyncHandler(integrationsController.vercelDisconnect));
+  api.post("/integrations/render", asyncHandler(integrationsController.renderConnect));
+  api.delete("/integrations/render", asyncHandler(integrationsController.renderDisconnect));
 
   api.get("/stats", asyncHandler(statsController.get));
 

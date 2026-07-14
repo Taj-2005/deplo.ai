@@ -263,6 +263,44 @@ cache.buildKey("deployment", id);
 - HTTP: `createAuthMiddleware()` → `req.userId`
 - GraphQL: `buildContext()` → `ctx.currentUser`
 
+### 8.5 Provider Integrations (per-user credentials)
+
+Every deployment provider is connected **per user** and stored in the single
+`ProviderConnection` table (`provider: "VERCEL" | "RENDER" | …`, unique per
+`[userId, provider]`, credential AES-256-GCM encrypted in
+`accessTokenEncrypted`, display metadata + `metadata Json`, `status`).
+Deployments always run inside the **user's own** provider account — there are
+no global platform credentials.
+
+| Provider | Auth strategy | Validation | Credential |
+|----------|--------------|------------|------------|
+| GitHub | OAuth (login) | OAuth exchange | access token (encrypted) |
+| Vercel | Integration OAuth (redirect w/ signed JWT state) | token exchange + `getAccountInfo` | OAuth token (encrypted) |
+| Render | **Personal API Key** (no third-party OAuth exists) | live `GET /v1/owners` BEFORE storing | API key (encrypted) |
+
+**Render specifics** (`infrastructure/render/`):
+- `RenderApiClient` — per-user key client; `listOwners()` validates the key
+  (401/403 → rejected) and returns workspace metadata. 15s timeout.
+- `RenderAdapter` — service creation/deploys; takes the user's key via
+  constructor (never `process.env`).
+- `IntegrationService.connectRender()` — format check (`rnd_…`) → live
+  validation → encrypt → upsert (`providerTeamId`/`providerUserId` = owner id,
+  `metadata.lastValidatedAt`). **Invalid keys are never stored.**
+  `resolveRenderCredentials()` decrypts for the orchestrator.
+  Rotation = reconnect with a new key (same upsert path).
+- Endpoints (authenticated): `GET /integrations` (statuses, never tokens),
+  `POST /integrations/render` `{apiKey}`, `DELETE /integrations/render`.
+- UI (`dashboard/integrations`): Render card mirrors the Vercel card — status,
+  workspace, masked key (`rnd_••••`, never shown again), rotate, guided
+  connect panel (dashboard link → paste → validate), confirm-disconnect.
+- Security: raw key never logged, never echoed back, masked in UI, encrypted
+  at rest; validation happens before persistence.
+
+No Prisma migration was needed — `ProviderConnection` was designed
+provider-agnostic. Future providers (Railway, Cloudflare) follow the same
+pattern: an `XApiClient` for validation, `connectX/disconnectX/resolveXCredentials`
+on `IntegrationService`, one card on the Integrations page.
+
 ---
 
 ## 9. Frontend Architecture (Next.js)
