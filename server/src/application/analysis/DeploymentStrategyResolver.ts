@@ -38,12 +38,12 @@ const PROVIDER_RULES: Record<FrameworkId, ProviderRule> = {
   remix: { provider: "vercel", preset: "remix", deployable: false },
   gatsby: { provider: "vercel", preset: "gatsby", deployable: false },
   "static-html": { provider: "vercel", preset: null, deployable: false },
-  // Backend (Node) → Vercel serverless (current orchestrator path)
-  express: { provider: "vercel", preset: null, deployable: true },
-  fastify: { provider: "vercel", preset: null, deployable: true },
-  nestjs: { provider: "vercel", preset: null, deployable: false },
-  hono: { provider: "vercel", preset: null, deployable: false },
-  koa: { provider: "vercel", preset: null, deployable: false },
+  // Backend (Node) → Render web service in the user's own workspace
+  express: { provider: "render", preset: null, deployable: true },
+  fastify: { provider: "render", preset: null, deployable: true },
+  nestjs: { provider: "render", preset: null, deployable: false },
+  hono: { provider: "render", preset: null, deployable: false },
+  koa: { provider: "render", preset: null, deployable: false },
   bun: { provider: "render", preset: null, deployable: false },
   // Backend (other runtimes) → Render (Phase 2 targets)
   fastapi: { provider: "render", preset: null, deployable: false },

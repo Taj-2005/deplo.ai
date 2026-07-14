@@ -5,6 +5,7 @@ import type { AnalysisService } from "../services/AnalysisService";
 import type { GroqReasoningService } from "../analysis/GroqReasoningService";
 import type { IntegrationService } from "../services/IntegrationService";
 import { VercelAdapter, type VercelFramework } from "../../infrastructure/vercel/VercelAdapter";
+import { RenderAdapter } from "../../infrastructure/render/RenderAdapter";
 import type { GitHubAdapter } from "../../infrastructure/github/GitHubAdapter";
 import type { StackType } from "../../domain/deployment/Deployment";
 import { decrypt } from "../../shared/utils/crypto";
@@ -162,126 +163,110 @@ export class DeploymentOrchestrator {
       // Preserve URLs from previous attempts so retries skip already-completed phases
       let backendUrl: string | null = deployment.backendUrl ?? null;
 
-      // Stable Vercel project domains — computed before any deployment so we can cross-link
-      // frontend ↔ backend (CORS, NEXT_PUBLIC_API_URL) without a chicken-and-egg problem.
-      const backendProjectName  = this.serviceSlug(repository.name, "api");
+      // Stable Vercel frontend domain — known before deployment so the backend
+      // can be configured with FRONTEND_URL (CORS) without a chicken-and-egg problem.
+      const backendServiceName  = this.serviceSlug(repository.name, "api");
       const frontendProjectName = this.serviceSlug(repository.name, "web");
-      const stableBackendUrl    = `https://${backendProjectName}.vercel.app`;
       const stableFrontendUrl   = `https://${frontendProjectName}.vercel.app`;
 
-      // ── Backend (Vercel serverless) ──────────────────────────────────────
+      // ── Backend (Render — user's own workspace) ──────────────────────────
       if (hasBackend && !backendUrl) {
-
         await this.deploymentRepository.update(deploymentId, { status: "DEPLOYING_BACKEND" });
-        await this.deploymentRepository.appendLog(deploymentId, "Deploying backend to Vercel (serverless)…");
+        await this.deploymentRepository.appendLog(deploymentId, "Deploying backend to Render…");
+
+        // Backends run in the USER'S Render account — resolve their API key.
+        // Throws with a clear "connect Render" message if not connected.
+        const renderCreds = await this.integrationService.resolveRenderCredentials(deployment.userId);
+        const render = new RenderAdapter(renderCreds.apiKey);
 
         const backendSubPath = stack?.backendPath ?? "";
-        const treeEntries = await this.github.getRepoTree(githubToken, repository.fullName, branch);
+        const prefix = backendSubPath ? `${backendSubPath}/` : "";
 
-        const relevantEntries = backendSubPath
-          ? treeEntries.filter((e) => e.path.startsWith(`${backendSubPath}/`))
-          : treeEntries;
+        // Build/start commands come from the repo's OWN package.json scripts —
+        // never guessed or hardcoded.
+        const pkgRaw = await this.github.getFileContent(githubToken, repository.fullName, `${prefix}package.json`);
+        let pkg: PkgJson | null = null;
+        try {
+          pkg = pkgRaw ? (JSON.parse(pkgRaw) as PkgJson) : null;
+        } catch {
+          pkg = null;
+        }
+        const scripts = pkg?.scripts ?? {};
+
+        const pm = await this.detectPackageManager(githubToken, repository.fullName, prefix);
+        const installCmd =
+          pm === "yarn" ? "yarn install" : pm === "pnpm" ? "pnpm install" : pm === "bun" ? "bun install" : "npm install";
+        const runPrefix =
+          pm === "yarn" ? "yarn" : pm === "pnpm" ? "pnpm run" : pm === "bun" ? "bun run" : "npm run";
+
+        const buildCommand = scripts["build"] ? `${installCmd} && ${runPrefix} build` : installCmd;
+
+        let startCommand: string;
+        if (scripts["start"]) {
+          startCommand = pm === "npm" ? "npm start" : pm === "bun" ? "bun run start" : `${pm} start`;
+        } else {
+          // No start script — locate the entry point from the actual file tree.
+          const treeEntries = await this.github.getRepoTree(githubToken, repository.fullName, branch);
+          const files = treeEntries
+            .filter((e) => !backendSubPath || e.path.startsWith(prefix))
+            .map((e) => ({ path: backendSubPath ? e.path.slice(prefix.length) : e.path }));
+          const entry = this.resolveBackendEntry(pkg, files);
+          startCommand = `node ${entry}.js`;
+        }
 
         await this.deploymentRepository.appendLog(
           deploymentId,
-          `Downloading ${relevantEntries.length} files${backendSubPath ? ` from ${backendSubPath}/` : ""}…`,
+          `Using package.json scripts — build: "${buildCommand}", start: "${startCommand}"`,
         );
 
-        // Files we always inject — remove originals to prevent duplicates
-        const INJECTED_PATHS = new Set(["vercel.json", "api/index.js", "api/index.ts"]);
-
-        const BATCH = 20;
-        const backendFiles: Array<{ path: string; content: Buffer }> = [];
-        for (let i = 0; i < relevantEntries.length; i += BATCH) {
-          const batch = relevantEntries.slice(i, i + BATCH);
-          const buffers = await Promise.all(
-            batch.map((e) => this.github.getBlob(githubToken, repository.fullName, e.sha)),
-          );
-          batch.forEach((e, idx) => {
-            const relativePath = backendSubPath
-              ? e.path.slice(`${backendSubPath}/`.length)
-              : e.path;
-            if (!INJECTED_PATHS.has(relativePath)) {
-              backendFiles.push({ path: relativePath, content: buffers[idx]! });
-            }
-          });
-        }
-
-        // Patch package.json to add serverless-http
-        const pkgIdx = backendFiles.findIndex((f) => f.path === "package.json");
-        let pkg: PkgJson | null = null;
-        if (pkgIdx !== -1) {
-          try {
-            pkg = JSON.parse(backendFiles[pkgIdx]!.content.toString("utf8")) as PkgJson;
-            const patched: PkgJson = {
-              ...pkg,
-              dependencies: { ...(pkg.dependencies ?? {}), "serverless-http": "^3.2.0" },
-            };
-            backendFiles[pkgIdx] = {
-              path: "package.json",
-              content: Buffer.from(JSON.stringify(patched, null, 2), "utf8"),
-            };
-          } catch { /* leave as-is */ }
-        }
-
-        // Detect entry point and inject serverless wrapper + vercel.json
-        const entry = this.resolveBackendEntry(pkg, backendFiles);
-        backendFiles.push(
-          {
-            path: "api/index.js",
-            content: Buffer.from(this.generateServerlessWrapper(entry, stack?.backend ?? null), "utf8"),
-          },
-          {
-            path: "vercel.json",
-            content: Buffer.from(
-              JSON.stringify(
-                { version: 2, builds: [{ src: "api/index.js", use: "@vercel/node" }], routes: [{ src: "/(.*)", dest: "/api/index.js" }] },
-                null, 2,
-              ),
-              "utf8",
-            ),
-          },
-        );
-
-        const backendEnvVars: Array<{ key: string; value: string; target: Array<"production"> }> = [
-          { key: "NODE_ENV",      value: "production",      target: ["production"] },
-          // deplo.ai injects the frontend URL so the serverless CORS wrapper can allow it
-          { key: "FRONTEND_URL", value: stableFrontendUrl, target: ["production"] },
+        // Backend receives backend-scoped + shared vars (never frontend-only ones)
+        const backendEnvVars = [
+          { key: "NODE_ENV", value: "production" },
+          // Frontend origin for the user's own CORS configuration
+          { key: "FRONTEND_URL", value: stableFrontendUrl },
           ...envVars
+            .filter((v) => (v.scope ?? "shared") !== "frontend")
             .filter((v) => !v.isRequired || v.value !== "")
-            .map((v) => ({ key: v.key, value: v.value, target: ["production" as const] })),
+            .map((v) => ({ key: v.key, value: v.value })),
         ];
 
-        const backendProject = await vercel.createProject({
-          name: backendProjectName,
-          framework: null,
-          environmentVariables: backendEnvVars,
-        });
-
-        // Always upsert env vars — project may already exist from a failed attempt
-        await vercel.upsertProjectEnvVars(backendProject.id, backendEnvVars);
-
-        const backendDeploy = await vercel.deployFromFiles({
-          projectId: backendProject.id,
-          name: backendProjectName,
-          files: backendFiles,
-        });
-
         await this.deploymentRepository.appendLog(
           deploymentId,
-          `Vercel backend deployment triggered (${backendDeploy.id}). Waiting for build…`,
+          "Creating Render web service (your Render account must have access to this GitHub repository)…",
         );
 
-        await vercel.waitForDeployment(backendDeploy.id);
-        backendUrl = stableBackendUrl;
+        const createParams: Parameters<RenderAdapter["createWebService"]>[0] = {
+          name: backendServiceName,
+          repoUrl: `https://github.com/${repository.fullName}`,
+          branch,
+          buildCommand,
+          startCommand,
+          envVars: backendEnvVars,
+          plan: "free",
+          ownerId: renderCreds.ownerId,
+        };
+        if (backendSubPath) createParams.rootDir = backendSubPath;
+
+        const { service, deployId } = await render.createWebService(createParams);
+
+        await this.deploymentRepository.update(deploymentId, {
+          renderServiceId: service.id,
+          renderDeployId: deployId,
+        });
+        await this.deploymentRepository.appendLog(
+          deploymentId,
+          `Render service created (${service.id}). Building — this can take a few minutes…`,
+        );
+
+        const { url } = await render.waitForDeploy(service.id, deployId);
+        backendUrl = url;
 
         await this.deploymentRepository.update(deploymentId, {
           backendUrl,
           status: "BACKEND_READY",
-          renderServiceId: backendProject.id, // repurposed to store backend Vercel project ID
         });
         await this.deploymentRepository.appendLog(deploymentId, `Backend live at ${backendUrl}`);
-        logger.info("Backend deployed to Vercel (serverless)", { deploymentId, backendUrl });
+        logger.info("Backend deployed to Render", { deploymentId, backendUrl, serviceId: service.id });
       }
 
       // ── Frontend (Vercel — file-based) ───────────────────────────────────
@@ -330,13 +315,30 @@ export class DeploymentOrchestrator {
 
         const framework = toVercelFramework(stack?.frontend ?? null);
 
+        // Auto-inject the live backend URL into every frontend key that
+        // references it (detected from the user's code + framework default:
+        // NEXT_PUBLIC_API_URL, VITE_API_URL, REACT_APP_API_URL, …).
+        const apiKeys = new Set(stack?.frontendApiKeys ?? []);
+        if (apiKeys.size === 0 && hasBackend) apiKeys.add("NEXT_PUBLIC_API_URL");
+
+        // Frontend receives frontend-scoped + shared vars (never backend-only ones)
         const vercelEnvVars: Array<{ key: string; value: string; target: Array<"production"> }> = [
           ...envVars
+            .filter((v) => (v.scope ?? "shared") !== "backend")
             .filter((v) => !v.isRequired || v.value !== "")
+            .filter((v) => !apiKeys.has(v.key))
             .map((v) => ({ key: v.key, value: v.value, target: ["production" as const] })),
-          // Always set to stable backend URL — fixes stale hash-URL from previous deployments
-          ...(hasBackend ? [{ key: "NEXT_PUBLIC_API_URL", value: stableBackendUrl, target: ["production" as const] }] : []),
+          ...(hasBackend && backendUrl
+            ? [...apiKeys].map((key) => ({ key, value: backendUrl!, target: ["production" as const] }))
+            : []),
         ];
+
+        if (hasBackend && backendUrl) {
+          await this.deploymentRepository.appendLog(
+            deploymentId,
+            `Wiring frontend → backend: ${[...apiKeys].join(", ")} = ${backendUrl}`,
+          );
+        }
 
         const createProjectParams: Parameters<VercelAdapter["createProject"]>[0] = {
           name: frontendProjectName,
@@ -441,92 +443,19 @@ export class DeploymentOrchestrator {
     return "src/index";
   }
 
-  private generateServerlessWrapper(entryPath: string, backend: StackType | null): string {
-    const importPath = entryPath.startsWith(".") ? entryPath : `../${entryPath}`;
-    return [
-      `'use strict';`,
-      `// Generated by deplo.ai — serverless wrapper (${backend ?? "Express"} backend)`,
-      `const http = require('http');`,
-      `const serverlessHttp = require('serverless-http');`,
-      ``,
-      `// CORS — injected at wrapper level so it works regardless of user app config.`,
-      `// FRONTEND_URL is set by deplo.ai at deploy time (stable Vercel project domain).`,
-      `const CORS_ORIGIN  = process.env.FRONTEND_URL || null;`,
-      `const CORS_METHODS = 'GET,POST,PUT,PATCH,DELETE,OPTIONS';`,
-      `const CORS_HEADERS = 'Content-Type,Authorization,X-Requested-With,Accept';`,
-      `function setCors(req, res) {`,
-      `  const origin = req.headers['origin'];`,
-      `  if (CORS_ORIGIN) {`,
-      `    if (!origin || origin === CORS_ORIGIN) {`,
-      `      res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);`,
-      `      res.setHeader('Access-Control-Allow-Credentials', 'true');`,
-      `      res.setHeader('Vary', 'Origin');`,
-      `    }`,
-      `  } else if (origin) {`,
-      `    // No FRONTEND_URL set — reflect origin (dev fallback only)`,
-      `    res.setHeader('Access-Control-Allow-Origin', origin);`,
-      `    res.setHeader('Access-Control-Allow-Credentials', 'true');`,
-      `    res.setHeader('Vary', 'Origin');`,
-      `  }`,
-      `  res.setHeader('Access-Control-Allow-Methods', CORS_METHODS);`,
-      `  res.setHeader('Access-Control-Allow-Headers', CORS_HEADERS);`,
-      `}`,
-      ``,
-      `// Most backends use async bootstrap: async function main() { await db.connect(); app.listen(); }`,
-      `// require() is synchronous, so http.createServer is called AFTER require() returns.`,
-      `// We use a Promise so the exported handler can await the app being ready.`,
-      `let _resolveHandler;`,
-      `const _handlerReady = new Promise(function(resolve) { _resolveHandler = resolve; });`,
-      ``,
-      `// Intercept http.createServer — captures the Express/Fastify app no matter how it is created.`,
-      `const _origCreate = http.createServer;`,
-      `http.createServer = function() {`,
-      `  const args = Array.prototype.slice.call(arguments);`,
-      `  const server = _origCreate.apply(http, args);`,
-      `  if (typeof args[0] === 'function') _resolveHandler(args[0]);`,
-      `  // Stub listen() — serverless has no persistent port`,
-      `  server.listen = function(port, host, cb) {`,
-      `    const done = typeof port === 'function' ? port`,
-      `      : typeof host === 'function' ? host`,
-      `      : typeof cb === 'function' ? cb : null;`,
-      `    if (done) setImmediate(done);`,
-      `    return server;`,
-      `  };`,
-      `  return server;`,
-      `};`,
-      ``,
-      `// Load the user's app — triggers the async bootstrap`,
-      `const mod = require('${importPath}');`,
-      ``,
-      `// If the app exports its handler directly (no listen call), resolve immediately`,
-      `const _exported = mod && typeof mod === 'object'`,
-      `  ? (mod.default || mod.app || mod.handler || mod.fastify)`,
-      `  : null;`,
-      `if (typeof _exported === 'function') _resolveHandler(_exported);`,
-      ``,
-      `// Cache the serverless-wrapped handler after first init`,
-      `let _wrapped = null;`,
-      ``,
-      `// Async handler — waits for the app to finish its async startup before serving.`,
-      `// Handles: await db.connect(), await redis.connect(), etc. before app.listen().`,
-      `module.exports = async function handler(req, res) {`,
-      `  setCors(req, res);`,
-      `  // Short-circuit OPTIONS preflight without delegating to the user's app`,
-      `  if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }`,
-      `  if (!_wrapped) {`,
-      `    const app = await Promise.race([`,
-      `      _handlerReady,`,
-      `      new Promise(function(_, reject) {`,
-      `        setTimeout(function() {`,
-      `          reject(new Error('[deplo.ai] App startup timed out (30s). Verify DB_URL, REDIS_URL and other required env vars are set.'));`,
-      `        }, 30000);`,
-      `      }),`,
-      `    ]);`,
-      `    _wrapped = serverlessHttp(app);`,
-      `  }`,
-      `  return _wrapped(req, res);`,
-      `};`,
-    ].join("\n") + "\n";
+  /** Detect the backend's package manager from its lockfiles (component dir, then root). */
+  private async detectPackageManager(
+    githubToken: string,
+    fullName: string,
+    prefix: string,
+  ): Promise<"npm" | "yarn" | "pnpm" | "bun"> {
+    const dirs = prefix ? [prefix, ""] : [""];
+    for (const dir of dirs) {
+      if (await this.github.getFileContent(githubToken, fullName, `${dir}bun.lockb`)) return "bun";
+      if (await this.github.getFileContent(githubToken, fullName, `${dir}pnpm-lock.yaml`)) return "pnpm";
+      if (await this.github.getFileContent(githubToken, fullName, `${dir}yarn.lock`)) return "yarn";
+    }
+    return "npm";
   }
 
   private async maybeRegisterWebhook(

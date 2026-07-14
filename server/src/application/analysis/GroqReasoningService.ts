@@ -123,10 +123,23 @@ const REPO_REASONING_SCHEMA = {
           startCommand: { type: ["string", "null"] },
           confidence: { type: "number" },
           reasoning: { type: "string" },
+          envVars: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                key: { type: "string" },
+                required: { type: "boolean" },
+                reason: { type: "string" },
+              },
+              required: ["key", "required", "reason"],
+              additionalProperties: false,
+            },
+          },
         },
         required: [
           "path", "role", "framework", "language", "installCommand",
-          "buildCommand", "outputDirectory", "startCommand", "confidence", "reasoning",
+          "buildCommand", "outputDirectory", "startCommand", "confidence", "reasoning", "envVars",
         ],
         additionalProperties: false,
       },
@@ -181,7 +194,10 @@ export class GroqReasoningService {
           "You are a deployment analyst for a hosting platform. Given a repository's " +
           "folder tree, key files, and an inconclusive deterministic analysis, identify " +
           "each deployable component's framework, language, and exact install/build/start " +
-          "commands. Be precise and conservative; use null when a command is not needed.",
+          "commands. Also list the environment variables each component needs at runtime " +
+          "(from code references, config files, and framework conventions) — mark them " +
+          "required only when the app cannot start without them. Be precise and " +
+          "conservative; use null when a command is not needed.",
         user: context,
       });
 
@@ -373,12 +389,23 @@ export class GroqReasoningService {
       ? Math.min(...components.map((c) => c.framework.confidence))
       : 0;
 
+    // Collect the AI's env findings — AnalysisService merges them with the
+    // deterministic scan (deterministic wins on conflicts).
+    const aiEnvVars = ai.components.flatMap((c) =>
+      (c.envVars ?? []).map((v) => ({
+        key: v.key,
+        required: v.required,
+        scope: c.role,
+      })),
+    );
+
     return {
       ...deterministic,
       components,
       overallConfidence,
       needsAiFallback: overallConfidence < AI_ESCALATION_THRESHOLD,
       aiUsed: true,
+      aiEnvVars,
       evidence: [
         ...deterministic.evidence,
         { signal: "ai:groq:summary", weight: 0, detail: ai.summary.slice(0, 300) },

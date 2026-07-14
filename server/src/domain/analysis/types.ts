@@ -166,9 +166,21 @@ export interface RepositoryAnalysis {
   evidence: Evidence[];
   /** True when AI reasoning (Layer 3) contributed to this result. */
   aiUsed?: boolean;
+  /**
+   * Env vars the AI found (with the component role they belong to) — merged
+   * with the deterministic scan by AnalysisService, deterministic wins.
+   */
+  aiEnvVars?: Array<{ key: string; required: boolean; scope: "frontend" | "backend" }>;
 }
 
 // ─── AI reasoning (Layer 3) results ──────────────────────────────────────────
+
+/** An environment variable the LLM found that deterministic scanning missed. */
+export interface AiEnvVar {
+  key: string;
+  required: boolean;
+  reason: string;
+}
 
 /** One component's corrected analysis as returned by the LLM. */
 export interface AiComponentReasoning {
@@ -182,6 +194,7 @@ export interface AiComponentReasoning {
   startCommand: string | null;
   confidence: number;
   reasoning: string;
+  envVars: AiEnvVar[];
 }
 
 /** AI attempt #1 — full-repo reasoning when deterministic confidence is low. */
