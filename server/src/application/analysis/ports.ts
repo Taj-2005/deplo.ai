@@ -21,6 +21,24 @@ export interface ISourceProvider {
 }
 
 /**
+ * LLM completion port (Layer 3 reasoning). Implementations must return an
+ * object that validates against the supplied JSON schema (strict structured
+ * output) or throw. The application layer never sees HTTP/provider details.
+ */
+export interface ILlmClient {
+  completeJson<T>(params: {
+    /** System prompt framing the task. */
+    system: string;
+    /** User content (curated repo context — never the whole repository). */
+    user: string;
+    /** JSON schema the response must conform to (strict mode). */
+    schema: Record<string, unknown>;
+    /** Schema name for the provider's structured-output envelope. */
+    schemaName: string;
+  }): Promise<T>;
+}
+
+/**
  * A cached snapshot of a repository built once per analysis. Wraps an
  * ISourceProvider with memoised reads and cheap tree queries so detectors can
  * ask "does this file/dir exist?" without extra network calls.

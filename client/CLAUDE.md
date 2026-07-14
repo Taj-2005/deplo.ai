@@ -159,8 +159,35 @@ NestJS, Hono, Koa, FastAPI, Flask, Django, Spring Boot, Go, Bun.
 **Deployable today** (Phase 1): Next.js, Vite/React (→ Vercel), Express, Fastify
 (→ Vercel serverless). Everything else is **detected with a correct strategy**
 but marked `deployable: false` (`strategy.notes` explains). Broadening deploy
-targets (Render for Python/Go/Java) and wiring **Groq** (Layer 3 reasoning +
-error-driven retry, max 2 AI attempts) are **Phase 2**.
+targets (Render for Python/Go/Java) is **Phase 3**.
+
+**Layer 3 — Groq AI fallback (Phase 2, implemented)**
+
+When deterministic confidence < 0.5, the pipeline escalates to Groq
+(`GroqReasoningService` + `infrastructure/groq/GroqClient`). Strictly bounded —
+**max 2 AI calls per deployment**:
+
+1. `reasonAboutRepository()` — fired from `AnalysisService` on low confidence.
+   Sends the folder tree (≤200 paths), key config files + small top-level
+   source files (≤25 files, ≤1.5KB each), dependency lists, and the
+   deterministic evidence — never the whole repo. Returns per-component
+   framework/language/commands via **strict JSON-schema structured outputs**
+   with framework/language **enums** (constrained decoding → always canonical).
+   AI corrections merge only when more confident than the deterministic result;
+   merged evidence is tagged `ai:groq`.
+2. `diagnoseDeploymentFailure()` — fired once from the orchestrator's
+   `failDeployment()`. Sends the detected stack, error, and log tail; returns
+   likely cause + corrected build/start/output suggestions, appended to the
+   deployment logs for the user.
+
+Implementation contract:
+- Model: `GROQ_MODEL` (default `openai/gpt-oss-120b` — production model with
+  strict structured outputs; free tier).
+- Keys: `GROQ_API_TOKEN_1/2` (optional). `GroqClient` tries each key at most
+  once per completion, failing over on 401/403/429/5xx/timeout (45s).
+- Degrades gracefully: no keys → deterministic-only; LLM failure → deterministic
+  result is kept, never an error to the user.
+- `RepositoryAnalysis.aiUsed` marks AI-assisted results.
 
 ---
 

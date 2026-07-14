@@ -31,6 +31,8 @@ import { createDeploymentWorker } from "./infrastructure/queue/DeploymentWorker"
 // ── Application Services ──────────────────────────────────────────────────────
 import { AuthService } from "./application/services/AuthService";
 import { AnalysisService } from "./application/services/AnalysisService";
+import { GroqReasoningService } from "./application/analysis/GroqReasoningService";
+import { GroqClient } from "./infrastructure/groq/GroqClient";
 import { DeploymentService } from "./application/services/DeploymentService";
 import { RepositoryService } from "./application/services/RepositoryService";
 import { IntegrationService } from "./application/services/IntegrationService";
@@ -77,7 +79,15 @@ async function bootstrap(): Promise<void> {
   // ── Application services ──────────────────────────────────────────────────
   const repositoryService = new RepositoryService(repositoryRepository, github, cache);
   const authService = new AuthService(userRepository, repositoryRepository, github, cache);
-  const analysisService = new AnalysisService(github);
+
+  // Layer 3 AI reasoning (optional — deterministic-only when no Groq keys).
+  const groqTokens = [env.GROQ_API_TOKEN_1, env.GROQ_API_TOKEN_2].filter(Boolean);
+  const reasoning = groqTokens.length
+    ? new GroqReasoningService(new GroqClient(groqTokens, env.GROQ_MODEL))
+    : null;
+  logger.info(reasoning ? `Groq AI reasoning enabled (${env.GROQ_MODEL}, ${groqTokens.length} key(s))` : "Groq AI reasoning disabled (no keys)");
+
+  const analysisService = new AnalysisService(github, reasoning);
 
   const integrationService = new IntegrationService(providerConnectionRepository, {
     vercelClientId: env.VERCEL_CLIENT_ID,
@@ -105,6 +115,7 @@ async function bootstrap(): Promise<void> {
     analysisService,
     integrationService,
     github,
+    reasoning,
   );
 
   const worker = createDeploymentWorker(workerRedis, orchestrator);
