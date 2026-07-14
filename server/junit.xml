@@ -1,3 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="jest tests" tests="0" failures="0" errors="0" time="0.009">
+<testsuites name="jest tests" tests="25" failures="0" errors="0" time="10.799">
+  <testsuite name="FrameworkDetector" errors="0" failures="0" skipped="0" timestamp="2026-07-14T12:38:44" time="8.833" tests="9">
+    <testcase classname="FrameworkDetector prefers Next.js over React (meta-framework wins)" name="FrameworkDetector prefers Next.js over React (meta-framework wins)" time="0.035">
+    </testcase>
+    <testcase classname="FrameworkDetector detects FastAPI from requirements.txt + entrypoint (no package.json)" name="FrameworkDetector detects FastAPI from requirements.txt + entrypoint (no package.json)" time="0.002">
+    </testcase>
+    <testcase classname="StructureAnalyzer treats a Next.js app/ router as a single app, not a monorepo" name="StructureAnalyzer treats a Next.js app/ router as a single app, not a monorepo" time="0.005">
+    </testcase>
+    <testcase classname="StructureAnalyzer detects a pnpm workspace monorepo and resolves package globs" name="StructureAnalyzer detects a pnpm workspace monorepo and resolves package globs" time="0.002">
+    </testcase>
+    <testcase classname="StructureAnalyzer detects a classic frontend/backend split" name="StructureAnalyzer detects a classic frontend/backend split" time="0.001">
+    </testcase>
+    <testcase classname="RepositoryAnalyzer (end-to-end) maps a Vite+React SPA to the legacy REACT_VITE stack" name="RepositoryAnalyzer (end-to-end) maps a Vite+React SPA to the legacy REACT_VITE stack" time="0.011">
+    </testcase>
+    <testcase classname="RepositoryAnalyzer (end-to-end) analyzes a pnpm monorepo into frontend + backend components" name="RepositoryAnalyzer (end-to-end) analyzes a pnpm monorepo into frontend + backend components" time="0.003">
+    </testcase>
+    <testcase classname="RepositoryAnalyzer (end-to-end) detects a Go backend with the right build/start plan (not yet deployable)" name="RepositoryAnalyzer (end-to-end) detects a Go backend with the right build/start plan (not yet deployable)" time="0.001">
+    </testcase>
+    <testcase classname="RepositoryAnalyzer (end-to-end) flags AI fallback when nothing is confidently detected" name="RepositoryAnalyzer (end-to-end) flags AI fallback when nothing is confidently detected" time="0.002">
+    </testcase>
+  </testsuite>
+  <testsuite name="IntegrationService — Render" errors="0" failures="0" skipped="0" timestamp="2026-07-14T12:38:44" time="9.366" tests="6">
+    <testcase classname="IntegrationService — Render rejects malformed keys without calling the API or storing anything" name="IntegrationService — Render rejects malformed keys without calling the API or storing anything" time="0.034">
+    </testcase>
+    <testcase classname="IntegrationService — Render rejects keys the Render API refuses — nothing stored" name="IntegrationService — Render rejects keys the Render API refuses — nothing stored" time="0.002">
+    </testcase>
+    <testcase classname="IntegrationService — Render validates, encrypts, and stores a good key (team workspace)" name="IntegrationService — Render validates, encrypts, and stores a good key (team workspace)" time="0.019">
+    </testcase>
+    <testcase classname="IntegrationService — Render prefers the personal workspace when both exist" name="IntegrationService — Render prefers the personal workspace when both exist" time="0.002">
+    </testcase>
+    <testcase classname="IntegrationService — Render resolves decrypted per-user credentials for the deployment engine" name="IntegrationService — Render resolves decrypted per-user credentials for the deployment engine" time="0.001">
+    </testcase>
+    <testcase classname="IntegrationService — Render throws a clear error when Render is not connected" name="IntegrationService — Render throws a clear error when Render is not connected" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="GroqClient token failover" errors="0" failures="0" skipped="0" timestamp="2026-07-14T12:38:44" time="9.404" tests="10">
+    <testcase classname="GroqClient token failover falls back to the second key when the first is rejected" name="GroqClient token failover falls back to the second key when the first is rejected" time="0.023">
+    </testcase>
+    <testcase classname="GroqClient token failover throws after all keys fail — bounded, one try per key" name="GroqClient token failover throws after all keys fail — bounded, one try per key" time="0.019">
+    </testcase>
+    <testcase classname="GroqClient token failover requires at least one token" name="GroqClient token failover requires at least one token" time="0.005">
+    </testcase>
+    <testcase classname="normalization maps free-text framework names onto FrameworkId" name="normalization maps free-text framework names onto FrameworkId" time="0.001">
+    </testcase>
+    <testcase classname="normalization maps languages" name="normalization maps languages" time="0.001">
+    </testcase>
+    <testcase classname="GroqReasoningService merge adopts the AI result when deterministic confidence is lower" name="GroqReasoningService merge adopts the AI result when deterministic confidence is lower" time="0.01">
+    </testcase>
+    <testcase classname="GroqReasoningService merge keeps the deterministic result when the LLM call fails" name="GroqReasoningService merge keeps the deterministic result when the LLM call fails" time="0.004">
+    </testcase>
+    <testcase classname="GroqReasoningService merge does not let a less-confident AI overwrite a confident deterministic result" name="GroqReasoningService merge does not let a less-confident AI overwrite a confident deterministic result" time="0.021">
+    </testcase>
+    <testcase classname="GroqReasoningService merge produces a legacy stack from AI-corrected analysis" name="GroqReasoningService merge produces a legacy stack from AI-corrected analysis" time="0.004">
+    </testcase>
+    <testcase classname="GroqReasoningService merge returns a structured failure diagnosis" name="GroqReasoningService merge returns a structured failure diagnosis" time="0.001">
+    </testcase>
+  </testsuite>
 </testsuites>
