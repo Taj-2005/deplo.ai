@@ -94,12 +94,18 @@ export function Footer() {
               <a
                 href="mailto:deploai201@gmail.com"
                 aria-label="Email deplo.ai"
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:text-black hover:border-black transition-colors"
+                className="group w-8 h-8 flex items-center justify-center rounded-lg border border-[#E2E8F0] hover:border-[#EA4335] transition-colors"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <rect x="2" y="4" width="20" height="16" rx="2"/>
-                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-                </svg>
+                <span className="w-[19px] h-[19px]">
+                  <Image
+                    src="/gmail.webp"
+                    alt=""
+                    width={19}
+                    height={19}
+                    className="w-full h-full object-contain grayscale opacity-60 transition-all group-hover:grayscale-0 group-hover:opacity-100"
+                    aria-hidden="true"
+                  />
+                </span>
               </a>
             </div>
           </div>

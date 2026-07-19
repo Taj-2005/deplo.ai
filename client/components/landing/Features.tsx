@@ -45,7 +45,9 @@ function StackDetectVisual() {
             transition={{ delay: i * 0.1, duration: 0.4 }}
             className="flex items-center gap-3 p-2.5 border border-[#E2E8F0] bg-gray-50/50"
           >
-            <Image src={file.img} alt={file.name} width={18} height={18} className="object-contain shrink-0" />
+            <span className="w-[18px] h-[18px] shrink-0">
+              <Image src={file.img} alt={file.name} width={18} height={18} className="w-full h-full object-contain" />
+            </span>
             <span className="text-[12px] font-mono text-black flex-1">
               {file.name}
             </span>
