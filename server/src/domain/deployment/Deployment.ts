@@ -40,6 +40,7 @@ export type StackType =
   | "GATSBY"
   | "ANGULAR"
   | "STATIC"
+  | "GO"
   | "EXPRESS"
   | "FASTIFY"
   | "FASTAPI"

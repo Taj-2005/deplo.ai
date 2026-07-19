@@ -161,7 +161,7 @@ SvelteKit, Remix, Gatsby, Angular, static HTML** → the user's **Vercel**
 account (preset slugs verified against `GET /v1/frameworks` — SvelteKit is
 `sveltekit-1`; when a preset exists we rely on its framework-aware defaults
 instead of passing build/output overrides). Express, Fastify, **FastAPI,
-Flask, Django** → a **Render web service in the user's own workspace**
+Flask, Django, Go** → a **Render web service in the user's own workspace**
 (per-user API key via `resolveRenderCredentials()`; repo-based deploy with
 `rootDir` for monorepos; plan `free`; modern `serviceDetails.runtime` field —
 `env` is deprecated).
@@ -174,6 +174,9 @@ Flask, Django** → a **Render web service in the user's own workspace**
   0.0.0.0:$PORT <module>:<var>` for Flask, `<pkg>.wsgi:application` for
   Django); `PYTHON_VERSION` set when a fully-qualified version is detected.
   Carried on DetectedStack as `backendRuntime` + `backend*Command` fields.
+- **Go backends**: build target from the repo layout — root `main.go` →
+  `go build -o app .`, `cmd/<name>/main.go` convention → that package;
+  start `./app`; Go version honoured from go.mod by Render.
 - Vercel creds are only required when a frontend exists (backend-only Python
   repos deploy with Render alone).
 

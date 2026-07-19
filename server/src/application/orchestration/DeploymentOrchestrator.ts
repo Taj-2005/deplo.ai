@@ -46,6 +46,7 @@ function toHumanStack(stack: StackType | null): string | null {
     GATSBY: "Gatsby",
     ANGULAR: "Angular",
     STATIC: "Static site",
+    GO: "Go",
     EXPRESS: "Express.js",
     FASTIFY: "Fastify",
     FASTAPI: "FastAPI",
@@ -166,7 +167,7 @@ export class DeploymentOrchestrator {
       if (!hasBackend && !hasFrontend) {
         await this.deploymentRepository.appendLog(
           deploymentId,
-          "No deployable stack detected. Supported: Next.js, React (Vite), Express, Fastify, FastAPI, Flask, Django.",
+          "No deployable stack detected. Supported frontends: Next.js, React, Vue, Nuxt, Astro, Svelte(Kit), Remix, Gatsby, Angular, static HTML. Backends: Express, Fastify, FastAPI, Flask, Django, Go.",
         );
         await this.deploymentRepository.update(deploymentId, {
           status: "COMPLETED",
@@ -199,24 +200,29 @@ export class DeploymentOrchestrator {
         const backendSubPath = stack?.backendPath ?? "";
         const prefix = backendSubPath ? `${backendSubPath}/` : "";
 
-        const runtime: RenderRuntime = stack?.backendRuntime === "python" ? "python" : "node";
+        const runtime: RenderRuntime =
+          stack?.backendRuntime === "python" || stack?.backendRuntime === "go" ? stack.backendRuntime : "node";
 
         let buildCommand: string;
         let startCommand: string;
         const runtimeEnvVars: Array<{ key: string; value: string }> = [];
 
-        if (runtime === "python") {
-          // Python: commands were resolved by the analysis engine from the
-          // repo's real files (requirements.txt, app module, wsgi package).
-          buildCommand = stack?.backendInstallCommand ?? "pip install -r requirements.txt";
+        if (runtime !== "node") {
+          // Python/Go: commands were resolved by the analysis engine from the
+          // repo's real files (requirements.txt / app module / go.mod layout).
+          const fallbackInstall = runtime === "go" ? "go mod download" : "pip install -r requirements.txt";
+          const fallbackStart = runtime === "go" ? "./app" : "gunicorn --bind 0.0.0.0:$PORT app:app";
+
+          buildCommand = stack?.backendInstallCommand ?? fallbackInstall;
           if (stack?.backendBuildCommand) buildCommand += ` && ${stack.backendBuildCommand}`;
-          startCommand = stack?.backendStartCommand ?? "gunicorn --bind 0.0.0.0:$PORT app:app";
-          if (stack?.backendRuntimeVersion && /^\d+\.\d+\.\d+$/.test(stack.backendRuntimeVersion)) {
+          startCommand = stack?.backendStartCommand ?? fallbackStart;
+
+          if (runtime === "python" && stack?.backendRuntimeVersion && /^\d+\.\d+\.\d+$/.test(stack.backendRuntimeVersion)) {
             runtimeEnvVars.push({ key: "PYTHON_VERSION", value: stack.backendRuntimeVersion });
           }
           await this.deploymentRepository.appendLog(
             deploymentId,
-            `Python backend — build: "${buildCommand}", start: "${startCommand}"`,
+            `${runtime === "go" ? "Go" : "Python"} backend — build: "${buildCommand}", start: "${startCommand}"`,
           );
         } else {
           // Node: build/start come from the repo's OWN package.json scripts —

@@ -90,7 +90,7 @@ export class BuildCommandResolver {
       return this.resolvePython(componentPath, framework, defaults);
     }
     if (language === "go") {
-      return { installCommand: "go mod download", buildCommand: "go build -o app ./...", outputDirectory: null, startCommand: defaults.start };
+      return this.resolveGo(componentPath, defaults);
     }
     if (language === "java") {
       const gradle = (await this.snapshot.hasFile(join(componentPath, "build.gradle"))) || (await this.snapshot.hasFile(join(componentPath, "build.gradle.kts")));
@@ -122,6 +122,33 @@ export class BuildCommandResolver {
       buildCommand,
       outputDirectory: defaults.outputDir,
       startCommand,
+    };
+  }
+
+  /**
+   * Go build target from the actual repo layout: root main.go → build ".",
+   * cmd/<name>/main.go convention → build that package.
+   */
+  private async resolveGo(componentPath: string, defaults: FrameworkDefaults): Promise<BuildPlan> {
+    const prefix = componentPath ? `${componentPath}/` : "";
+    let target = ".";
+
+    if (!(await this.snapshot.hasFile(join(componentPath, "main.go")))) {
+      for (const p of await this.snapshot.paths()) {
+        if (!p.startsWith(prefix)) continue;
+        const m = p.slice(prefix.length).match(/^cmd\/([A-Za-z0-9_-]+)\/main\.go$/);
+        if (m) {
+          target = `./cmd/${m[1]}`;
+          break;
+        }
+      }
+    }
+
+    return {
+      installCommand: "go mod download",
+      buildCommand: `go build -o app ${target}`,
+      outputDirectory: null,
+      startCommand: defaults.start,
     };
   }
 

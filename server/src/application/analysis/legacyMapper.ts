@@ -27,6 +27,7 @@ const FRAMEWORK_TO_STACK: Partial<Record<FrameworkId, StackType>> = {
   fastapi: "FASTAPI",
   flask: "FLASK",
   django: "DJANGO",
+  go: "GO",
 };
 
 function toStackType(framework: FrameworkId): StackType {

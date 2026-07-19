@@ -50,7 +50,7 @@ const PROVIDER_RULES: Record<FrameworkId, ProviderRule> = {
   flask: { provider: "render", preset: null, deployable: true },
   django: { provider: "render", preset: null, deployable: true },
   "spring-boot": { provider: "render", preset: null, deployable: false },
-  go: { provider: "render", preset: null, deployable: false },
+  go: { provider: "render", preset: null, deployable: true },
   unknown: { provider: "none", preset: null, deployable: false },
 };
 

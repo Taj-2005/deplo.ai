@@ -88,3 +88,29 @@ describe("Python backends (Phase 3, slice 1)", () => {
     expect(stack.frontend).toBe("REACT_VITE");
   });
 });
+
+describe("Go backends (Phase 3, slice 3)", () => {
+  it("cmd/<name> layout builds the right package", async () => {
+    const result = await analyze({
+      "go.mod": "module example.com/svc\n\ngo 1.22\n",
+      "cmd/server/main.go": "package main\nfunc main() {}",
+      "internal/handler/handler.go": "package handler",
+    });
+    const backend = result.components.find((c) => c.role === "backend")!;
+    expect(backend.framework.framework).toBe("go");
+    expect(backend.strategy.buildCommand).toBe("go build -o app ./cmd/server");
+    expect(backend.strategy.startCommand).toBe("./app");
+    expect(backend.strategy.deployable).toBe(true);
+    expect(toDetectedStack(result).backend).toBe("GO");
+  });
+
+  it("go version flows from go.mod for the runtime", async () => {
+    const result = await analyze({
+      "go.mod": "module example.com/app\n\ngo 1.22\n",
+      "main.go": "package main\nfunc main() {}",
+    });
+    const backend = result.components.find((c) => c.role === "backend")!;
+    expect(backend.strategy.runtime.version).toBe("1.22");
+    expect(backend.framework.language).toBe("go");
+  });
+});
