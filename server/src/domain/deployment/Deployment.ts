@@ -28,7 +28,25 @@ export function isActiveStatus(status: DeploymentStatus): boolean {
   return ACTIVE_STATUSES.includes(status);
 }
 
-export type StackType = "NEXTJS" | "REACT_VITE" | "EXPRESS" | "FASTIFY" | "UNKNOWN";
+export type StackType =
+  | "NEXTJS"
+  | "REACT_VITE"
+  | "VUE"
+  | "NUXT"
+  | "ASTRO"
+  | "SVELTE"
+  | "SVELTEKIT"
+  | "REMIX"
+  | "GATSBY"
+  | "ANGULAR"
+  | "STATIC"
+  | "GO"
+  | "EXPRESS"
+  | "FASTIFY"
+  | "FASTAPI"
+  | "FLASK"
+  | "DJANGO"
+  | "UNKNOWN";
 
 export interface DetectedStack {
   frontend: StackType | null;
@@ -46,6 +64,14 @@ export interface DetectedStack {
    * VITE_API_URL) — auto-injected with the live backend URL at deploy time.
    */
   frontendApiKeys?: string[];
+  /** Backend runtime for the Render service (node backends re-derive commands live). */
+  backendRuntime?: "node" | "python" | "go";
+  /** Install/build/start resolved from the repo by the analysis engine (non-Node backends). */
+  backendInstallCommand?: string | null;
+  backendBuildCommand?: string | null;
+  backendStartCommand?: string | null;
+  /** Language version (e.g. "3.12.1") when detected — drives PYTHON_VERSION etc. */
+  backendRuntimeVersion?: string | null;
 }
 
 /** Which side of the app a variable belongs to — drives per-provider injection. */

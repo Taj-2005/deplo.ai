@@ -13,8 +13,21 @@ const FRAMEWORK_TO_STACK: Partial<Record<FrameworkId, StackType>> = {
   nextjs: "NEXTJS",
   vite: "REACT_VITE",
   react: "REACT_VITE",
+  vue: "VUE",
+  nuxt: "NUXT",
+  astro: "ASTRO",
+  svelte: "SVELTE",
+  sveltekit: "SVELTEKIT",
+  remix: "REMIX",
+  gatsby: "GATSBY",
+  angular: "ANGULAR",
+  "static-html": "STATIC",
   express: "EXPRESS",
   fastify: "FASTIFY",
+  fastapi: "FASTAPI",
+  flask: "FLASK",
+  django: "DJANGO",
+  go: "GO",
 };
 
 function toStackType(framework: FrameworkId): StackType {

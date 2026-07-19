@@ -5,7 +5,7 @@ import type { AnalysisService } from "../services/AnalysisService";
 import type { GroqReasoningService } from "../analysis/GroqReasoningService";
 import type { IntegrationService } from "../services/IntegrationService";
 import { VercelAdapter, type VercelFramework } from "../../infrastructure/vercel/VercelAdapter";
-import { RenderAdapter } from "../../infrastructure/render/RenderAdapter";
+import { RenderAdapter, type RenderRuntime } from "../../infrastructure/render/RenderAdapter";
 import type { GitHubAdapter } from "../../infrastructure/github/GitHubAdapter";
 import type { StackType } from "../../domain/deployment/Deployment";
 import { decrypt } from "../../shared/utils/crypto";
@@ -18,6 +18,15 @@ import { env } from "../../config/env";
 const VERCEL_FRAMEWORK: Record<string, VercelFramework> = {
   NEXTJS: "nextjs",
   REACT_VITE: "vite",
+  VUE: "vue",
+  NUXT: "nuxtjs",
+  ASTRO: "astro",
+  SVELTE: "svelte",
+  SVELTEKIT: "sveltekit-1",
+  REMIX: "remix",
+  GATSBY: "gatsby",
+  ANGULAR: "angular",
+  // STATIC → null (no preset; served as static files)
 };
 
 function toVercelFramework(stack: StackType | null): VercelFramework {
@@ -28,8 +37,21 @@ function toHumanStack(stack: StackType | null): string | null {
   const map: Record<string, string> = {
     NEXTJS: "Next.js",
     REACT_VITE: "React (Vite)",
+    VUE: "Vue",
+    NUXT: "Nuxt",
+    ASTRO: "Astro",
+    SVELTE: "Svelte",
+    SVELTEKIT: "SvelteKit",
+    REMIX: "Remix",
+    GATSBY: "Gatsby",
+    ANGULAR: "Angular",
+    STATIC: "Static site",
+    GO: "Go",
     EXPRESS: "Express.js",
     FASTIFY: "Fastify",
+    FASTAPI: "FastAPI",
+    FLASK: "Flask",
+    DJANGO: "Django",
     UNKNOWN: "Unknown",
   };
   return stack ? (map[stack] ?? stack) : null;
@@ -136,10 +158,6 @@ export class DeploymentOrchestrator {
 
       const githubToken = decrypt(user.githubAccessToken);
 
-      // Load the user's Vercel credentials — throws if not connected
-      const vercelCreds = await this.integrationService.resolveVercelCredentials(deployment.userId);
-      const vercel = new VercelAdapter(vercelCreds.token, vercelCreds.teamId);
-
       const stack = deployment.detectedStack;
       const hasBackend  = !!stack?.backend;
       const hasFrontend = !!stack?.frontend;
@@ -149,7 +167,7 @@ export class DeploymentOrchestrator {
       if (!hasBackend && !hasFrontend) {
         await this.deploymentRepository.appendLog(
           deploymentId,
-          "No deployable stack detected. Supported: Next.js, React (Vite), Express, Fastify.",
+          "No deployable stack detected. Supported frontends: Next.js, React, Vue, Nuxt, Astro, Svelte(Kit), Remix, Gatsby, Angular, static HTML. Backends: Express, Fastify, FastAPI, Flask, Django, Go.",
         );
         await this.deploymentRepository.update(deploymentId, {
           status: "COMPLETED",
@@ -182,46 +200,72 @@ export class DeploymentOrchestrator {
         const backendSubPath = stack?.backendPath ?? "";
         const prefix = backendSubPath ? `${backendSubPath}/` : "";
 
-        // Build/start commands come from the repo's OWN package.json scripts —
-        // never guessed or hardcoded.
-        const pkgRaw = await this.github.getFileContent(githubToken, repository.fullName, `${prefix}package.json`);
-        let pkg: PkgJson | null = null;
-        try {
-          pkg = pkgRaw ? (JSON.parse(pkgRaw) as PkgJson) : null;
-        } catch {
-          pkg = null;
-        }
-        const scripts = pkg?.scripts ?? {};
+        const runtime: RenderRuntime =
+          stack?.backendRuntime === "python" || stack?.backendRuntime === "go" ? stack.backendRuntime : "node";
 
-        const pm = await this.detectPackageManager(githubToken, repository.fullName, prefix);
-        const installCmd =
-          pm === "yarn" ? "yarn install" : pm === "pnpm" ? "pnpm install" : pm === "bun" ? "bun install" : "npm install";
-        const runPrefix =
-          pm === "yarn" ? "yarn" : pm === "pnpm" ? "pnpm run" : pm === "bun" ? "bun run" : "npm run";
-
-        const buildCommand = scripts["build"] ? `${installCmd} && ${runPrefix} build` : installCmd;
-
+        let buildCommand: string;
         let startCommand: string;
-        if (scripts["start"]) {
-          startCommand = pm === "npm" ? "npm start" : pm === "bun" ? "bun run start" : `${pm} start`;
-        } else {
-          // No start script — locate the entry point from the actual file tree.
-          const treeEntries = await this.github.getRepoTree(githubToken, repository.fullName, branch);
-          const files = treeEntries
-            .filter((e) => !backendSubPath || e.path.startsWith(prefix))
-            .map((e) => ({ path: backendSubPath ? e.path.slice(prefix.length) : e.path }));
-          const entry = this.resolveBackendEntry(pkg, files);
-          startCommand = `node ${entry}.js`;
-        }
+        const runtimeEnvVars: Array<{ key: string; value: string }> = [];
 
-        await this.deploymentRepository.appendLog(
-          deploymentId,
-          `Using package.json scripts — build: "${buildCommand}", start: "${startCommand}"`,
-        );
+        if (runtime !== "node") {
+          // Python/Go: commands were resolved by the analysis engine from the
+          // repo's real files (requirements.txt / app module / go.mod layout).
+          const fallbackInstall = runtime === "go" ? "go mod download" : "pip install -r requirements.txt";
+          const fallbackStart = runtime === "go" ? "./app" : "gunicorn --bind 0.0.0.0:$PORT app:app";
+
+          buildCommand = stack?.backendInstallCommand ?? fallbackInstall;
+          if (stack?.backendBuildCommand) buildCommand += ` && ${stack.backendBuildCommand}`;
+          startCommand = stack?.backendStartCommand ?? fallbackStart;
+
+          if (runtime === "python" && stack?.backendRuntimeVersion && /^\d+\.\d+\.\d+$/.test(stack.backendRuntimeVersion)) {
+            runtimeEnvVars.push({ key: "PYTHON_VERSION", value: stack.backendRuntimeVersion });
+          }
+          await this.deploymentRepository.appendLog(
+            deploymentId,
+            `${runtime === "go" ? "Go" : "Python"} backend — build: "${buildCommand}", start: "${startCommand}"`,
+          );
+        } else {
+          // Node: build/start come from the repo's OWN package.json scripts —
+          // never guessed or hardcoded.
+          const pkgRaw = await this.github.getFileContent(githubToken, repository.fullName, `${prefix}package.json`);
+          let pkg: PkgJson | null = null;
+          try {
+            pkg = pkgRaw ? (JSON.parse(pkgRaw) as PkgJson) : null;
+          } catch {
+            pkg = null;
+          }
+          const scripts = pkg?.scripts ?? {};
+
+          const pm = await this.detectPackageManager(githubToken, repository.fullName, prefix);
+          const installCmd =
+            pm === "yarn" ? "yarn install" : pm === "pnpm" ? "pnpm install" : pm === "bun" ? "bun install" : "npm install";
+          const runPrefix =
+            pm === "yarn" ? "yarn" : pm === "pnpm" ? "pnpm run" : pm === "bun" ? "bun run" : "npm run";
+
+          buildCommand = scripts["build"] ? `${installCmd} && ${runPrefix} build` : installCmd;
+
+          if (scripts["start"]) {
+            startCommand = pm === "npm" ? "npm start" : pm === "bun" ? "bun run start" : `${pm} start`;
+          } else {
+            // No start script — locate the entry point from the actual file tree.
+            const treeEntries = await this.github.getRepoTree(githubToken, repository.fullName, branch);
+            const files = treeEntries
+              .filter((e) => !backendSubPath || e.path.startsWith(prefix))
+              .map((e) => ({ path: backendSubPath ? e.path.slice(prefix.length) : e.path }));
+            const entry = this.resolveBackendEntry(pkg, files);
+            startCommand = `node ${entry}.js`;
+          }
+
+          runtimeEnvVars.push({ key: "NODE_ENV", value: "production" });
+          await this.deploymentRepository.appendLog(
+            deploymentId,
+            `Using package.json scripts — build: "${buildCommand}", start: "${startCommand}"`,
+          );
+        }
 
         // Backend receives backend-scoped + shared vars (never frontend-only ones)
         const backendEnvVars = [
-          { key: "NODE_ENV", value: "production" },
+          ...runtimeEnvVars,
           // Frontend origin for the user's own CORS configuration
           { key: "FRONTEND_URL", value: stableFrontendUrl },
           ...envVars
@@ -239,6 +283,7 @@ export class DeploymentOrchestrator {
           name: backendServiceName,
           repoUrl: `https://github.com/${repository.fullName}`,
           branch,
+          runtime,
           buildCommand,
           startCommand,
           envVars: backendEnvVars,
@@ -271,6 +316,10 @@ export class DeploymentOrchestrator {
 
       // ── Frontend (Vercel — file-based) ───────────────────────────────────
       if (hasFrontend && !deployment.frontendUrl) {
+        // Vercel credentials are only needed when there is a frontend to deploy.
+        const vercelCreds = await this.integrationService.resolveVercelCredentials(deployment.userId);
+        const vercel = new VercelAdapter(vercelCreds.token, vercelCreds.teamId);
+
         await this.deploymentRepository.update(deploymentId, { status: "DEPLOYING_FRONTEND" });
         await this.deploymentRepository.appendLog(deploymentId, "Fetching repository files…");
 
@@ -345,8 +394,13 @@ export class DeploymentOrchestrator {
           framework,
           environmentVariables: vercelEnvVars,
         };
-        if (stack?.buildCommand)  createProjectParams.buildCommand    = stack.buildCommand;
-        if (stack?.outputDir)     createProjectParams.outputDirectory = stack.outputDir;
+        // When Vercel has a framework preset, its defaults are framework-aware
+        // (build from package.json scripts, correct output dir) — only pass
+        // explicit overrides when there is NO preset to rely on.
+        if (!framework) {
+          if (stack?.buildCommand) createProjectParams.buildCommand    = stack.buildCommand;
+          if (stack?.outputDir)    createProjectParams.outputDirectory = stack.outputDir;
+        }
 
         const project = await vercel.createProject(createProjectParams);
 
@@ -361,8 +415,10 @@ export class DeploymentOrchestrator {
           files: deployFiles,
           framework,
         };
-        if (stack?.buildCommand) deployFromFilesParams.buildCommand    = stack.buildCommand;
-        if (stack?.outputDir)    deployFromFilesParams.outputDirectory = stack.outputDir;
+        if (!framework) {
+          if (stack?.buildCommand) deployFromFilesParams.buildCommand    = stack.buildCommand;
+          if (stack?.outputDir)    deployFromFilesParams.outputDirectory = stack.outputDir;
+        }
 
         const vDeploy = await vercel.deployFromFiles(deployFromFilesParams);
 

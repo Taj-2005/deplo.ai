@@ -22,7 +22,7 @@ const softwareApplication = {
     "Frontend and Backend Deployment",
     "Production URL Generation",
   ],
-  screenshot: "https://www.deplo.in/og.png",
+  screenshot: "https://www.deplo.in/opengraph-image",
   softwareVersion: "1.0",
   releaseNotes: "MVP release — GitHub to production in under 3 minutes",
 };
@@ -31,18 +31,25 @@ const organization = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "deplo.ai",
+  // Tells Google that brand-name queries ("deplo", "deplo ai") mean this entity.
+  alternateName: ["deplo", "deplo ai", "Deplo AI", "deplo.in"],
   url: "https://www.deplo.in",
-  logo: "https://www.deplo.in/logo.png",
+  logo: "https://www.deplo.in/icon-512.png",
   description:
     "deplo.ai is an AI-powered deployment orchestration platform that connects GitHub repositories to production infrastructure — automatically deploying frontend apps to Vercel and backend services to Render without any DevOps expertise required.",
   foundingDate: "2024",
-  sameAs: [] as string[],
+  // Entity consolidation — every official profile that links back to deplo.in
+  // strengthens the brand→site binding. Add LinkedIn/GitHub/Product Hunt URLs
+  // here as they exist.
+  sameAs: ["https://x.com/deploai"] as string[],
 };
 
 const webSite = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   name: "deplo.ai",
+  // Google's site-name feature explicitly reads WebSite.alternateName.
+  alternateName: ["deplo", "deplo ai", "Deplo AI"],
   url: "https://www.deplo.in",
   description:
     "AI-powered deployment orchestration. Connect GitHub. Get production URLs.",

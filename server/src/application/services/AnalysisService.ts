@@ -77,6 +77,18 @@ export class AnalysisService {
     // auto-injected with the live backend URL at deploy time.
     stack.frontendApiKeys = [...new Set([...frontendApiKeys, ...defaultFrontendApiKeys(stack.frontend)])];
 
+    // Backend runtime + engine-resolved commands (used by the orchestrator for
+    // non-Node backends; Node backends re-derive from package.json at deploy time).
+    const backendComp = analysis.components.find((c) => c.role === "backend");
+    if (backendComp) {
+      const lang = backendComp.framework.language;
+      stack.backendRuntime = lang === "python" ? "python" : lang === "go" ? "go" : "node";
+      stack.backendInstallCommand = backendComp.strategy.installCommand;
+      stack.backendBuildCommand = backendComp.strategy.buildCommand;
+      stack.backendStartCommand = backendComp.strategy.startCommand;
+      stack.backendRuntimeVersion = backendComp.strategy.runtime.version;
+    }
+
     logger.info("Repository analysis complete", {
       fullName,
       structure: analysis.structure.kind,

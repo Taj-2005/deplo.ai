@@ -36,6 +36,10 @@ export const metadata: Metadata = {
     "Connect your GitHub repo and get production-ready URLs in under 3 minutes. deplo.ai detects your stack, deploys frontend to Vercel and backend to Render, and syncs environment variables automatically — no DevOps expertise required.",
 
   keywords: [
+    "deplo",
+    "deplo ai",
+    "deplo.ai",
+    "deplo.in",
     "AI deployment platform",
     "AI DevOps platform",
     "GitHub deployment automation",
@@ -94,11 +98,8 @@ export const metadata: Metadata = {
     canonical: "https://www.deplo.in",
   },
 
-  icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon.ico",
-    apple: "/favicon.ico",
-  },
+  // Icons come from the app/ file conventions (icon.png, apple-icon.png) plus
+  // public/favicon.ico — all generated from the brand mark (profile.png).
 
   appleWebApp: {
     capable: true,

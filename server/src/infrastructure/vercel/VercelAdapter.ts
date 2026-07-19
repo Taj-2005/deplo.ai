@@ -24,6 +24,8 @@ export interface VercelAccountInfo {
 
 // ─── Params ──────────────────────────────────────────────────────────────────
 
+// Slugs verified against GET https://api.vercel.com/v1/frameworks —
+// note: modern SvelteKit is "sveltekit-1" ("sveltekit" is the v0 preset).
 export type VercelFramework =
   | "nextjs"
   | "vite"
@@ -31,6 +33,11 @@ export type VercelFramework =
   | "remix"
   | "nuxtjs"
   | "svelte"
+  | "sveltekit-1"
+  | "astro"
+  | "gatsby"
+  | "angular"
+  | "vue"
   | null;
 
 export interface CreateProjectParams {

@@ -136,7 +136,7 @@ function VercelCard({ integration, onConnect, onDisconnect }: VercelCardProps) {
   return (
     <Section
       title="Vercel"
-      description="Deploy your frontend and serverless backend to your own Vercel account."
+      description="Deploy your frontend to your own Vercel account."
     >
       <Row label="Connection status">
         {integration?.connected ? (

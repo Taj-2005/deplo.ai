@@ -6,6 +6,7 @@ import { Terminal } from "@/components/landing/Terminal";
 import { Integrations } from "@/components/landing/Integrations";
 import { Features } from "@/components/landing/Features";
 import { Trust } from "@/components/landing/Trust";
+import { FAQ } from "@/components/landing/FAQ";
 import { FinalCTA } from "@/components/landing/FinalCTA";
 import { Footer } from "@/components/landing/Footer";
 
@@ -21,6 +22,7 @@ export default function Home() {
         <Integrations />
         <Features />
         <Trust />
+        <FAQ />
         <FinalCTA />
       </main>
       <Footer />

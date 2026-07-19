@@ -130,7 +130,7 @@ describe("RepositoryAnalyzer (end-to-end)", () => {
     expect(result.structure.kind).toBe("monorepo");
   });
 
-  it("detects a Go backend with the right build/start plan (not yet deployable)", async () => {
+  it("detects a Go backend with the right build/start plan (deployable)", async () => {
     const result = await analyze({
       "go.mod": "module example.com/app\n\ngo 1.22\n\nrequire github.com/gin-gonic/gin v1.9.1\n",
       "main.go": "package main\nfunc main() {}",
@@ -139,8 +139,9 @@ describe("RepositoryAnalyzer (end-to-end)", () => {
     expect(c.framework.framework).toBe("go");
     expect(c.framework.language).toBe("go");
     expect(c.strategy.provider).toBe("render");
-    expect(c.strategy.deployable).toBe(false);
-    expect(c.strategy.buildCommand).toContain("go build");
+    expect(c.strategy.deployable).toBe(true);
+    expect(c.strategy.buildCommand).toBe("go build -o app .");
+    expect(c.strategy.startCommand).toBe("./app");
   });
 
   it("flags AI fallback when nothing is confidently detected", async () => {

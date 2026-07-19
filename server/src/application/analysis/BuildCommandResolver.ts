@@ -34,9 +34,9 @@ const FRAMEWORK_DEFAULTS: Record<FrameworkId, FrameworkDefaults> = {
   hono: { outputDir: null, start: "node ." },
   koa: { outputDir: null, start: "node ." },
   bun: { outputDir: null, start: "bun run start" },
-  fastapi: { outputDir: null, start: "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}" },
-  flask: { outputDir: null, start: "gunicorn app:app --bind 0.0.0.0:${PORT:-8000}" },
-  django: { outputDir: "staticfiles", start: "gunicorn ${DJANGO_WSGI:-app.wsgi} --bind 0.0.0.0:${PORT:-8000}" },
+  fastapi: { outputDir: null, start: "uvicorn main:app --host 0.0.0.0 --port $PORT" },
+  flask: { outputDir: null, start: "gunicorn --bind 0.0.0.0:$PORT app:app" },
+  django: { outputDir: null, start: "gunicorn --bind 0.0.0.0:$PORT app.wsgi:application" },
   "spring-boot": { outputDir: "target", start: "java -jar target/app.jar" },
   go: { outputDir: null, start: "./app" },
   unknown: { outputDir: null, start: null },
@@ -87,10 +87,10 @@ export class BuildCommandResolver {
       return this.resolveNode(componentPath, framework, runtime.packageManager ?? "npm", defaults);
     }
     if (language === "python") {
-      return this.resolvePython(componentPath, defaults);
+      return this.resolvePython(componentPath, framework, defaults);
     }
     if (language === "go") {
-      return { installCommand: "go mod download", buildCommand: "go build -o app ./...", outputDirectory: null, startCommand: defaults.start };
+      return this.resolveGo(componentPath, defaults);
     }
     if (language === "java") {
       const gradle = (await this.snapshot.hasFile(join(componentPath, "build.gradle"))) || (await this.snapshot.hasFile(join(componentPath, "build.gradle.kts")));
@@ -125,7 +125,38 @@ export class BuildCommandResolver {
     };
   }
 
-  private async resolvePython(componentPath: string, defaults: FrameworkDefaults): Promise<BuildPlan> {
+  /**
+   * Go build target from the actual repo layout: root main.go → build ".",
+   * cmd/<name>/main.go convention → build that package.
+   */
+  private async resolveGo(componentPath: string, defaults: FrameworkDefaults): Promise<BuildPlan> {
+    const prefix = componentPath ? `${componentPath}/` : "";
+    let target = ".";
+
+    if (!(await this.snapshot.hasFile(join(componentPath, "main.go")))) {
+      for (const p of await this.snapshot.paths()) {
+        if (!p.startsWith(prefix)) continue;
+        const m = p.slice(prefix.length).match(/^cmd\/([A-Za-z0-9_-]+)\/main\.go$/);
+        if (m) {
+          target = `./cmd/${m[1]}`;
+          break;
+        }
+      }
+    }
+
+    return {
+      installCommand: "go mod download",
+      buildCommand: `go build -o app ${target}`,
+      outputDirectory: null,
+      startCommand: defaults.start,
+    };
+  }
+
+  private async resolvePython(
+    componentPath: string,
+    framework: FrameworkId,
+    defaults: FrameworkDefaults,
+  ): Promise<BuildPlan> {
     const hasReq = await this.snapshot.hasFile(join(componentPath, "requirements.txt"));
     const hasPoetry = await this.snapshot.hasFile(join(componentPath, "pyproject.toml"));
     const installCmd = hasReq
@@ -133,7 +164,46 @@ export class BuildCommandResolver {
       : hasPoetry
         ? "pip install ."
         : "pip install -r requirements.txt";
-    return { installCommand: installCmd, buildCommand: null, outputDirectory: defaults.outputDir, startCommand: defaults.start };
+
+    const startCommand = (await this.detectPythonStart(componentPath, framework)) ?? defaults.start;
+    return { installCommand: installCmd, buildCommand: null, outputDirectory: defaults.outputDir, startCommand };
+  }
+
+  /**
+   * Detect the real app module from the repo instead of assuming main:app —
+   * e.g. `application.py` containing `application = Flask(__name__)` yields
+   * `gunicorn --bind 0.0.0.0:$PORT application:application`.
+   */
+  private async detectPythonStart(componentPath: string, framework: FrameworkId): Promise<string | null> {
+    const CANDIDATE_FILES = ["main.py", "app.py", "application.py", "server.py", "api.py", "wsgi.py", "asgi.py"];
+
+    if (framework === "django") {
+      // Find the project package: <pkg>/wsgi.py directly under the component.
+      const prefix = componentPath ? `${componentPath}/` : "";
+      for (const p of await this.snapshot.paths()) {
+        if (!p.startsWith(prefix)) continue;
+        const rel = p.slice(prefix.length);
+        const m = rel.match(/^([A-Za-z_][A-Za-z0-9_]*)\/wsgi\.py$/);
+        if (m) return `gunicorn --bind 0.0.0.0:$PORT ${m[1]}.wsgi:application`;
+      }
+      return null;
+    }
+
+    const varPattern =
+      framework === "fastapi" ? /([A-Za-z_][A-Za-z0-9_]*)\s*=\s*FastAPI\s*\(/ : /([A-Za-z_][A-Za-z0-9_]*)\s*=\s*Flask\s*\(/;
+
+    for (const file of CANDIDATE_FILES) {
+      const content = await this.snapshot.readFile(join(componentPath, file));
+      if (!content) continue;
+      const m = content.match(varPattern);
+      if (!m) continue;
+      const module = file.replace(/\.py$/, "");
+      const appVar = m[1]!;
+      return framework === "fastapi"
+        ? `uvicorn ${module}:${appVar} --host 0.0.0.0 --port $PORT`
+        : `gunicorn --bind 0.0.0.0:$PORT ${module}:${appVar}`;
+    }
+    return null;
   }
 }
 

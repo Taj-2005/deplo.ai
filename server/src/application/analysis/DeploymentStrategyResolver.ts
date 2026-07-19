@@ -25,19 +25,19 @@ interface ProviderRule {
  * provider behaviour is one edit.
  */
 const PROVIDER_RULES: Record<FrameworkId, ProviderRule> = {
-  // Frontend → Vercel
+  // Frontend → Vercel (preset slugs verified against GET /v1/frameworks)
   nextjs: { provider: "vercel", preset: "nextjs", deployable: true },
   vite: { provider: "vercel", preset: "vite", deployable: true },
   react: { provider: "vercel", preset: "create-react-app", deployable: true },
-  vue: { provider: "vercel", preset: "vite", deployable: false },
-  nuxt: { provider: "vercel", preset: "nuxtjs", deployable: false },
-  angular: { provider: "vercel", preset: "angular", deployable: false },
-  astro: { provider: "vercel", preset: "astro", deployable: false },
-  svelte: { provider: "vercel", preset: "svelte", deployable: false },
-  sveltekit: { provider: "vercel", preset: "sveltekit", deployable: false },
-  remix: { provider: "vercel", preset: "remix", deployable: false },
-  gatsby: { provider: "vercel", preset: "gatsby", deployable: false },
-  "static-html": { provider: "vercel", preset: null, deployable: false },
+  vue: { provider: "vercel", preset: "vue", deployable: true },
+  nuxt: { provider: "vercel", preset: "nuxtjs", deployable: true },
+  angular: { provider: "vercel", preset: "angular", deployable: true },
+  astro: { provider: "vercel", preset: "astro", deployable: true },
+  svelte: { provider: "vercel", preset: "svelte", deployable: true },
+  sveltekit: { provider: "vercel", preset: "sveltekit-1", deployable: true },
+  remix: { provider: "vercel", preset: "remix", deployable: true },
+  gatsby: { provider: "vercel", preset: "gatsby", deployable: true },
+  "static-html": { provider: "vercel", preset: null, deployable: true },
   // Backend (Node) → Render web service in the user's own workspace
   express: { provider: "render", preset: null, deployable: true },
   fastify: { provider: "render", preset: null, deployable: true },
@@ -45,12 +45,12 @@ const PROVIDER_RULES: Record<FrameworkId, ProviderRule> = {
   hono: { provider: "render", preset: null, deployable: false },
   koa: { provider: "render", preset: null, deployable: false },
   bun: { provider: "render", preset: null, deployable: false },
-  // Backend (other runtimes) → Render (Phase 2 targets)
-  fastapi: { provider: "render", preset: null, deployable: false },
-  flask: { provider: "render", preset: null, deployable: false },
-  django: { provider: "render", preset: null, deployable: false },
+  // Backend (Python) → Render web service in the user's own workspace
+  fastapi: { provider: "render", preset: null, deployable: true },
+  flask: { provider: "render", preset: null, deployable: true },
+  django: { provider: "render", preset: null, deployable: true },
   "spring-boot": { provider: "render", preset: null, deployable: false },
-  go: { provider: "render", preset: null, deployable: false },
+  go: { provider: "render", preset: null, deployable: true },
   unknown: { provider: "none", preset: null, deployable: false },
 };
 
