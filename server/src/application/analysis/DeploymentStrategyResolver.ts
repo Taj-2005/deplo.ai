@@ -45,10 +45,10 @@ const PROVIDER_RULES: Record<FrameworkId, ProviderRule> = {
   hono: { provider: "render", preset: null, deployable: false },
   koa: { provider: "render", preset: null, deployable: false },
   bun: { provider: "render", preset: null, deployable: false },
-  // Backend (other runtimes) → Render (Phase 2 targets)
-  fastapi: { provider: "render", preset: null, deployable: false },
-  flask: { provider: "render", preset: null, deployable: false },
-  django: { provider: "render", preset: null, deployable: false },
+  // Backend (Python) → Render web service in the user's own workspace
+  fastapi: { provider: "render", preset: null, deployable: true },
+  flask: { provider: "render", preset: null, deployable: true },
+  django: { provider: "render", preset: null, deployable: true },
   "spring-boot": { provider: "render", preset: null, deployable: false },
   go: { provider: "render", preset: null, deployable: false },
   unknown: { provider: "none", preset: null, deployable: false },

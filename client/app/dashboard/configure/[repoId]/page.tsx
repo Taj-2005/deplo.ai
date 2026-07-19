@@ -388,18 +388,19 @@ export default function ConfigurePage({
               What happens next
             </h4>
             <ol className="space-y-2 text-[12px] text-ds-on-variant">
-              <li className="flex items-start gap-2">
-                <span className="text-ds-primary font-mono font-bold">01</span>
-                Deploy backend to Vercel (serverless)
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-ds-primary font-mono font-bold">02</span>
-                Deploy frontend to Vercel
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-ds-primary font-mono font-bold">03</span>
-                Register GitHub webhook for auto-redeploy on push
-              </li>
+              {[
+                ...(analysis?.stack.backend ? ["Deploy backend to Render (your own workspace)"] : []),
+                ...(analysis?.stack.frontend ? ["Deploy frontend to Vercel (your own account)"] : []),
+                ...(analysis?.stack.backend && analysis?.stack.frontend
+                  ? ["Wire frontend to backend — API URL injected automatically"]
+                  : []),
+                "Register GitHub webhook for auto-redeploy on push",
+              ].map((step, i) => (
+                <li key={step} className="flex items-start gap-2">
+                  <span className="text-ds-primary font-mono font-bold">{String(i + 1).padStart(2, "0")}</span>
+                  {step}
+                </li>
+              ))}
             </ol>
           </div>
         </div>

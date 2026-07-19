@@ -27,10 +27,14 @@ export interface RenderDeploy {
 
 // ─── Params ─────────────────────────────────────────────────────────────────
 
+/** Native runtimes deplo.ai can deploy to Render (Docker intentionally excluded). */
+export type RenderRuntime = "node" | "python" | "go";
+
 export interface CreateWebServiceParams {
   name: string;
   repoUrl: string;
   branch: string;
+  runtime: RenderRuntime;
   buildCommand: string;
   startCommand: string;
   envVars: Array<{ key: string; value: string }>;
@@ -68,7 +72,8 @@ export class RenderAdapter {
       branch: params.branch,
       autoDeploy: "yes",
       serviceDetails: {
-        env: "node",
+        // Modern API field — `env` is deprecated (verified against current docs).
+        runtime: params.runtime,
         region: "oregon",
         plan: params.plan ?? "starter",
         envSpecificDetails: {

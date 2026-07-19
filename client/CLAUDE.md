@@ -157,14 +157,27 @@ Astro, Svelte/SvelteKit, Remix, Gatsby, static HTML. Backend: Express, Fastify,
 NestJS, Hono, Koa, FastAPI, Flask, Django, Spring Boot, Go, Bun.
 
 **Deployable today**: Next.js, Vite/React → the user's **Vercel** account;
-Express, Fastify → a **Render web service in the user's own workspace**
-(per-user API key via `resolveRenderCredentials()`; repo-based deploy with
-`rootDir` for monorepos; **build/start commands read from the repo's own
-package.json scripts** — never guessed; plan `free`). The frontend's
-`NEXT_PUBLIC_API_URL` is set to the live Render URL after the backend goes
-live; the backend gets `FRONTEND_URL` for CORS. Everything else is detected
-with a correct strategy but marked `deployable: false`. Remaining Phase 3:
-Python/Go/Java backends on Render, more Vercel frontend presets.
+Express, Fastify, **FastAPI, Flask, Django** → a **Render web service in the
+user's own workspace** (per-user API key via `resolveRenderCredentials()`;
+repo-based deploy with `rootDir` for monorepos; plan `free`; modern
+`serviceDetails.runtime` field — `env` is deprecated).
+
+- **Node backends**: build/start read from the repo's own package.json scripts
+  at deploy time — never guessed.
+- **Python backends**: the analysis engine resolves commands from real files —
+  install from requirements.txt/pyproject, start via detected app module
+  (`uvicorn <module>:<var>` from `X = FastAPI()`, `gunicorn --bind
+  0.0.0.0:$PORT <module>:<var>` for Flask, `<pkg>.wsgi:application` for
+  Django); `PYTHON_VERSION` set when a fully-qualified version is detected.
+  Carried on DetectedStack as `backendRuntime` + `backend*Command` fields.
+- Vercel creds are only required when a frontend exists (backend-only Python
+  repos deploy with Render alone).
+
+Frontend↔backend wiring: the live Render URL is injected into the frontend
+keys the code actually uses (`frontendApiKeys`); the backend gets
+`FRONTEND_URL` for CORS. Everything else is detected with a correct strategy
+but marked `deployable: false`. Remaining Phase 3: Go/Java backends, more
+Vercel frontend presets (Vue/Nuxt/Astro/Svelte/Remix/Gatsby/Angular/static).
 
 **Layer 3 — Groq AI fallback (Phase 2, implemented)**
 

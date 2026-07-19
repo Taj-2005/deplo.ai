@@ -5,7 +5,7 @@ import type { AnalysisService } from "../services/AnalysisService";
 import type { GroqReasoningService } from "../analysis/GroqReasoningService";
 import type { IntegrationService } from "../services/IntegrationService";
 import { VercelAdapter, type VercelFramework } from "../../infrastructure/vercel/VercelAdapter";
-import { RenderAdapter } from "../../infrastructure/render/RenderAdapter";
+import { RenderAdapter, type RenderRuntime } from "../../infrastructure/render/RenderAdapter";
 import type { GitHubAdapter } from "../../infrastructure/github/GitHubAdapter";
 import type { StackType } from "../../domain/deployment/Deployment";
 import { decrypt } from "../../shared/utils/crypto";
@@ -30,6 +30,9 @@ function toHumanStack(stack: StackType | null): string | null {
     REACT_VITE: "React (Vite)",
     EXPRESS: "Express.js",
     FASTIFY: "Fastify",
+    FASTAPI: "FastAPI",
+    FLASK: "Flask",
+    DJANGO: "Django",
     UNKNOWN: "Unknown",
   };
   return stack ? (map[stack] ?? stack) : null;
@@ -136,10 +139,6 @@ export class DeploymentOrchestrator {
 
       const githubToken = decrypt(user.githubAccessToken);
 
-      // Load the user's Vercel credentials — throws if not connected
-      const vercelCreds = await this.integrationService.resolveVercelCredentials(deployment.userId);
-      const vercel = new VercelAdapter(vercelCreds.token, vercelCreds.teamId);
-
       const stack = deployment.detectedStack;
       const hasBackend  = !!stack?.backend;
       const hasFrontend = !!stack?.frontend;
@@ -149,7 +148,7 @@ export class DeploymentOrchestrator {
       if (!hasBackend && !hasFrontend) {
         await this.deploymentRepository.appendLog(
           deploymentId,
-          "No deployable stack detected. Supported: Next.js, React (Vite), Express, Fastify.",
+          "No deployable stack detected. Supported: Next.js, React (Vite), Express, Fastify, FastAPI, Flask, Django.",
         );
         await this.deploymentRepository.update(deploymentId, {
           status: "COMPLETED",
@@ -182,46 +181,67 @@ export class DeploymentOrchestrator {
         const backendSubPath = stack?.backendPath ?? "";
         const prefix = backendSubPath ? `${backendSubPath}/` : "";
 
-        // Build/start commands come from the repo's OWN package.json scripts —
-        // never guessed or hardcoded.
-        const pkgRaw = await this.github.getFileContent(githubToken, repository.fullName, `${prefix}package.json`);
-        let pkg: PkgJson | null = null;
-        try {
-          pkg = pkgRaw ? (JSON.parse(pkgRaw) as PkgJson) : null;
-        } catch {
-          pkg = null;
-        }
-        const scripts = pkg?.scripts ?? {};
+        const runtime: RenderRuntime = stack?.backendRuntime === "python" ? "python" : "node";
 
-        const pm = await this.detectPackageManager(githubToken, repository.fullName, prefix);
-        const installCmd =
-          pm === "yarn" ? "yarn install" : pm === "pnpm" ? "pnpm install" : pm === "bun" ? "bun install" : "npm install";
-        const runPrefix =
-          pm === "yarn" ? "yarn" : pm === "pnpm" ? "pnpm run" : pm === "bun" ? "bun run" : "npm run";
-
-        const buildCommand = scripts["build"] ? `${installCmd} && ${runPrefix} build` : installCmd;
-
+        let buildCommand: string;
         let startCommand: string;
-        if (scripts["start"]) {
-          startCommand = pm === "npm" ? "npm start" : pm === "bun" ? "bun run start" : `${pm} start`;
-        } else {
-          // No start script — locate the entry point from the actual file tree.
-          const treeEntries = await this.github.getRepoTree(githubToken, repository.fullName, branch);
-          const files = treeEntries
-            .filter((e) => !backendSubPath || e.path.startsWith(prefix))
-            .map((e) => ({ path: backendSubPath ? e.path.slice(prefix.length) : e.path }));
-          const entry = this.resolveBackendEntry(pkg, files);
-          startCommand = `node ${entry}.js`;
-        }
+        const runtimeEnvVars: Array<{ key: string; value: string }> = [];
 
-        await this.deploymentRepository.appendLog(
-          deploymentId,
-          `Using package.json scripts — build: "${buildCommand}", start: "${startCommand}"`,
-        );
+        if (runtime === "python") {
+          // Python: commands were resolved by the analysis engine from the
+          // repo's real files (requirements.txt, app module, wsgi package).
+          buildCommand = stack?.backendInstallCommand ?? "pip install -r requirements.txt";
+          if (stack?.backendBuildCommand) buildCommand += ` && ${stack.backendBuildCommand}`;
+          startCommand = stack?.backendStartCommand ?? "gunicorn --bind 0.0.0.0:$PORT app:app";
+          if (stack?.backendRuntimeVersion && /^\d+\.\d+\.\d+$/.test(stack.backendRuntimeVersion)) {
+            runtimeEnvVars.push({ key: "PYTHON_VERSION", value: stack.backendRuntimeVersion });
+          }
+          await this.deploymentRepository.appendLog(
+            deploymentId,
+            `Python backend — build: "${buildCommand}", start: "${startCommand}"`,
+          );
+        } else {
+          // Node: build/start come from the repo's OWN package.json scripts —
+          // never guessed or hardcoded.
+          const pkgRaw = await this.github.getFileContent(githubToken, repository.fullName, `${prefix}package.json`);
+          let pkg: PkgJson | null = null;
+          try {
+            pkg = pkgRaw ? (JSON.parse(pkgRaw) as PkgJson) : null;
+          } catch {
+            pkg = null;
+          }
+          const scripts = pkg?.scripts ?? {};
+
+          const pm = await this.detectPackageManager(githubToken, repository.fullName, prefix);
+          const installCmd =
+            pm === "yarn" ? "yarn install" : pm === "pnpm" ? "pnpm install" : pm === "bun" ? "bun install" : "npm install";
+          const runPrefix =
+            pm === "yarn" ? "yarn" : pm === "pnpm" ? "pnpm run" : pm === "bun" ? "bun run" : "npm run";
+
+          buildCommand = scripts["build"] ? `${installCmd} && ${runPrefix} build` : installCmd;
+
+          if (scripts["start"]) {
+            startCommand = pm === "npm" ? "npm start" : pm === "bun" ? "bun run start" : `${pm} start`;
+          } else {
+            // No start script — locate the entry point from the actual file tree.
+            const treeEntries = await this.github.getRepoTree(githubToken, repository.fullName, branch);
+            const files = treeEntries
+              .filter((e) => !backendSubPath || e.path.startsWith(prefix))
+              .map((e) => ({ path: backendSubPath ? e.path.slice(prefix.length) : e.path }));
+            const entry = this.resolveBackendEntry(pkg, files);
+            startCommand = `node ${entry}.js`;
+          }
+
+          runtimeEnvVars.push({ key: "NODE_ENV", value: "production" });
+          await this.deploymentRepository.appendLog(
+            deploymentId,
+            `Using package.json scripts — build: "${buildCommand}", start: "${startCommand}"`,
+          );
+        }
 
         // Backend receives backend-scoped + shared vars (never frontend-only ones)
         const backendEnvVars = [
-          { key: "NODE_ENV", value: "production" },
+          ...runtimeEnvVars,
           // Frontend origin for the user's own CORS configuration
           { key: "FRONTEND_URL", value: stableFrontendUrl },
           ...envVars
@@ -239,6 +259,7 @@ export class DeploymentOrchestrator {
           name: backendServiceName,
           repoUrl: `https://github.com/${repository.fullName}`,
           branch,
+          runtime,
           buildCommand,
           startCommand,
           envVars: backendEnvVars,
@@ -271,6 +292,10 @@ export class DeploymentOrchestrator {
 
       // ── Frontend (Vercel — file-based) ───────────────────────────────────
       if (hasFrontend && !deployment.frontendUrl) {
+        // Vercel credentials are only needed when there is a frontend to deploy.
+        const vercelCreds = await this.integrationService.resolveVercelCredentials(deployment.userId);
+        const vercel = new VercelAdapter(vercelCreds.token, vercelCreds.teamId);
+
         await this.deploymentRepository.update(deploymentId, { status: "DEPLOYING_FRONTEND" });
         await this.deploymentRepository.appendLog(deploymentId, "Fetching repository files…");
 
