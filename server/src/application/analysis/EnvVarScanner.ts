@@ -40,7 +40,7 @@ const PLATFORM_MANAGED = new Set([
  * backend URL into these at deploy time instead of asking the user.
  */
 const FRONTEND_API_KEY_RE =
-  /^(NEXT_PUBLIC_|VITE_|REACT_APP_|NUXT_PUBLIC_|PUBLIC_)(API|BACKEND|SERVER)_?(BASE_?)?(URL|URI|HOST|ENDPOINT)$/;
+  /^(NEXT_PUBLIC_|VITE_|REACT_APP_|NUXT_PUBLIC_|GATSBY_|PUBLIC_)(API|BACKEND|SERVER)_?(BASE_?)?(URL|URI|HOST|ENDPOINT)$/;
 
 /** Backend-side keys deplo.ai injects itself (frontend origin for CORS, etc.). */
 const BACKEND_INJECTED = new Set(["FRONTEND_URL", "CLIENT_URL", "CORS_ORIGIN", "ALLOWED_ORIGINS_URL"]);
@@ -222,7 +222,19 @@ export function defaultFrontendApiKeys(frontend: string | null): string[] {
     case "NEXTJS":
       return ["NEXT_PUBLIC_API_URL"];
     case "REACT_VITE":
+    case "VUE":
+    case "SVELTE":
       return ["VITE_API_URL"];
+    case "NUXT":
+      return ["NUXT_PUBLIC_API_URL"];
+    case "ASTRO":
+    case "SVELTEKIT":
+      return ["PUBLIC_API_URL"];
+    case "GATSBY":
+      return ["GATSBY_API_URL"];
+    case "REMIX":
+      // Remix reads env server-side — plain API_URL, no client prefix.
+      return ["API_URL"];
     default:
       return [];
   }

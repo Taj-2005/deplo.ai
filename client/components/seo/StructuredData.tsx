@@ -22,7 +22,7 @@ const softwareApplication = {
     "Frontend and Backend Deployment",
     "Production URL Generation",
   ],
-  screenshot: "https://www.deplo.in/og.png",
+  screenshot: "https://www.deplo.in/opengraph-image",
   softwareVersion: "1.0",
   releaseNotes: "MVP release — GitHub to production in under 3 minutes",
 };
@@ -32,7 +32,7 @@ const organization = {
   "@type": "Organization",
   name: "deplo.ai",
   url: "https://www.deplo.in",
-  logo: "https://www.deplo.in/logo.png",
+  logo: "https://www.deplo.in/icon-512.png",
   description:
     "deplo.ai is an AI-powered deployment orchestration platform that connects GitHub repositories to production infrastructure — automatically deploying frontend apps to Vercel and backend services to Render without any DevOps expertise required.",
   foundingDate: "2024",

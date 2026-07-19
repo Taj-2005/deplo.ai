@@ -94,11 +94,8 @@ export const metadata: Metadata = {
     canonical: "https://www.deplo.in",
   },
 
-  icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon.ico",
-    apple: "/favicon.ico",
-  },
+  // Icons come from the app/ file conventions (icon.png, apple-icon.png) plus
+  // public/favicon.ico — all generated from the brand mark (profile.png).
 
   appleWebApp: {
     capable: true,

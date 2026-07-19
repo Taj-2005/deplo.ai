@@ -18,6 +18,15 @@ import { env } from "../../config/env";
 const VERCEL_FRAMEWORK: Record<string, VercelFramework> = {
   NEXTJS: "nextjs",
   REACT_VITE: "vite",
+  VUE: "vue",
+  NUXT: "nuxtjs",
+  ASTRO: "astro",
+  SVELTE: "svelte",
+  SVELTEKIT: "sveltekit-1",
+  REMIX: "remix",
+  GATSBY: "gatsby",
+  ANGULAR: "angular",
+  // STATIC → null (no preset; served as static files)
 };
 
 function toVercelFramework(stack: StackType | null): VercelFramework {
@@ -28,6 +37,15 @@ function toHumanStack(stack: StackType | null): string | null {
   const map: Record<string, string> = {
     NEXTJS: "Next.js",
     REACT_VITE: "React (Vite)",
+    VUE: "Vue",
+    NUXT: "Nuxt",
+    ASTRO: "Astro",
+    SVELTE: "Svelte",
+    SVELTEKIT: "SvelteKit",
+    REMIX: "Remix",
+    GATSBY: "Gatsby",
+    ANGULAR: "Angular",
+    STATIC: "Static site",
     EXPRESS: "Express.js",
     FASTIFY: "Fastify",
     FASTAPI: "FastAPI",
@@ -370,8 +388,13 @@ export class DeploymentOrchestrator {
           framework,
           environmentVariables: vercelEnvVars,
         };
-        if (stack?.buildCommand)  createProjectParams.buildCommand    = stack.buildCommand;
-        if (stack?.outputDir)     createProjectParams.outputDirectory = stack.outputDir;
+        // When Vercel has a framework preset, its defaults are framework-aware
+        // (build from package.json scripts, correct output dir) — only pass
+        // explicit overrides when there is NO preset to rely on.
+        if (!framework) {
+          if (stack?.buildCommand) createProjectParams.buildCommand    = stack.buildCommand;
+          if (stack?.outputDir)    createProjectParams.outputDirectory = stack.outputDir;
+        }
 
         const project = await vercel.createProject(createProjectParams);
 
@@ -386,8 +409,10 @@ export class DeploymentOrchestrator {
           files: deployFiles,
           framework,
         };
-        if (stack?.buildCommand) deployFromFilesParams.buildCommand    = stack.buildCommand;
-        if (stack?.outputDir)    deployFromFilesParams.outputDirectory = stack.outputDir;
+        if (!framework) {
+          if (stack?.buildCommand) deployFromFilesParams.buildCommand    = stack.buildCommand;
+          if (stack?.outputDir)    deployFromFilesParams.outputDirectory = stack.outputDir;
+        }
 
         const vDeploy = await vercel.deployFromFiles(deployFromFilesParams);
 

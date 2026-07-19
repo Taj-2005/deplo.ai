@@ -156,11 +156,15 @@ RepositoryAnalysis { structure, components[], confidence, needsAiFallback, evide
 Astro, Svelte/SvelteKit, Remix, Gatsby, static HTML. Backend: Express, Fastify,
 NestJS, Hono, Koa, FastAPI, Flask, Django, Spring Boot, Go, Bun.
 
-**Deployable today**: Next.js, Vite/React → the user's **Vercel** account;
-Express, Fastify, **FastAPI, Flask, Django** → a **Render web service in the
-user's own workspace** (per-user API key via `resolveRenderCredentials()`;
-repo-based deploy with `rootDir` for monorepos; plan `free`; modern
-`serviceDetails.runtime` field — `env` is deprecated).
+**Deployable today**: Next.js, Vite/React, **Vue, Nuxt, Astro, Svelte,
+SvelteKit, Remix, Gatsby, Angular, static HTML** → the user's **Vercel**
+account (preset slugs verified against `GET /v1/frameworks` — SvelteKit is
+`sveltekit-1`; when a preset exists we rely on its framework-aware defaults
+instead of passing build/output overrides). Express, Fastify, **FastAPI,
+Flask, Django** → a **Render web service in the user's own workspace**
+(per-user API key via `resolveRenderCredentials()`; repo-based deploy with
+`rootDir` for monorepos; plan `free`; modern `serviceDetails.runtime` field —
+`env` is deprecated).
 
 - **Node backends**: build/start read from the repo's own package.json scripts
   at deploy time — never guessed.
@@ -176,8 +180,8 @@ repo-based deploy with `rootDir` for monorepos; plan `free`; modern
 Frontend↔backend wiring: the live Render URL is injected into the frontend
 keys the code actually uses (`frontendApiKeys`); the backend gets
 `FRONTEND_URL` for CORS. Everything else is detected with a correct strategy
-but marked `deployable: false`. Remaining Phase 3: Go/Java backends, more
-Vercel frontend presets (Vue/Nuxt/Astro/Svelte/Remix/Gatsby/Angular/static).
+but marked `deployable: false`. Remaining Phase 3: Go/Java backends
+(NestJS/Hono/Koa/Bun also pending live validation).
 
 **Layer 3 — Groq AI fallback (Phase 2, implemented)**
 
