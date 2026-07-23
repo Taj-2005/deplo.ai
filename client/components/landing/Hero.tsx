@@ -391,9 +391,10 @@ export function Hero() {
           className="max-w-xl text-[#64748B] leading-[1.65]"
           style={{ fontSize: "clamp(1rem, 2vw, 1.125rem)" }}
         >
-          Connect your GitHub repo. deplo.ai detects your stack, deploys
-          frontend to Vercel and backend to Render, syncs environment
-          variables—and hands you production-ready URLs.
+          deplo.ai deploys your app across providers into accounts{" "}
+          <span className="text-black font-medium">you own</span> — frontend to
+          your Vercel, backend to your Render. No lock-in, no YAML, production
+          URLs in minutes.
         </motion.p>
 
         {/* CTAs */}

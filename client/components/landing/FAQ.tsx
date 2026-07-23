@@ -13,8 +13,13 @@ import { Plus } from "lucide-react";
 const faqs = [
   {
     q: "What is deplo.ai?",
-    a: "deplo.ai is an AI-powered deployment orchestration platform. You connect a GitHub repository, and deplo.ai detects the tech stack, provisions infrastructure, and returns production-ready URLs — frontend on Vercel, backend on Render — in under 3 minutes, with no DevOps knowledge required.",
+    a: "deplo.ai is an AI-powered deployment orchestration platform that deploys your app across providers into accounts you own — no lock-in, no YAML. You connect a GitHub repository, and deplo.ai detects the tech stack and returns production-ready URLs — frontend in your Vercel account, backend in your Render workspace — in minutes, with no DevOps knowledge required.",
   },
+  {
+    q: "Where do my apps actually run?",
+    a: "In your own accounts — not ours. Frontends deploy to your Vercel account and backends to your Render workspace, connected securely via OAuth or API keys that are encrypted at rest. You own every project, deployment, log, and domain.",
+  },
+
   {
     q: "How does deplo.ai work?",
     a: "deplo.ai analyzes your repository's actual files — package.json, config files, lock files, and folder structure — to identify your frameworks, build commands, and environment variables. An AI reasoning layer handles unusual project structures. It then deploys each part of your app to the right platform in your own accounts and wires the frontend to the backend automatically.",
@@ -22,10 +27,6 @@ const faqs = [
   {
     q: "Which frameworks does deplo.ai support?",
     a: "Frontend: Next.js, React (Vite), Vue, Nuxt, Astro, Svelte, SvelteKit, Remix, Gatsby, Angular, and static HTML sites. Backend: Express, Fastify, FastAPI, Flask, and Django. Detection covers even more frameworks, with new deployment targets added continuously.",
-  },
-  {
-    q: "Where do my apps actually run?",
-    a: "In your own accounts — not ours. Frontends deploy to your Vercel account and backends to your Render workspace, connected securely via OAuth or API keys that are encrypted at rest. You own every project, deployment, log, and domain.",
   },
   {
     q: "Do I need DevOps experience to use deplo.ai?",
