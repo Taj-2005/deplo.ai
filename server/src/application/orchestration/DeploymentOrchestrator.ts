@@ -279,20 +279,52 @@ export class DeploymentOrchestrator {
           "Creating Render web service (your Render account must have access to this GitHub repository)…",
         );
 
-        const createParams: Parameters<RenderAdapter["createWebService"]>[0] = {
-          name: backendServiceName,
-          repoUrl: `https://github.com/${repository.fullName}`,
-          branch,
-          runtime,
-          buildCommand,
-          startCommand,
-          envVars: backendEnvVars,
-          plan: "free",
-          ownerId: renderCreds.ownerId,
-        };
-        if (backendSubPath) createParams.rootDir = backendSubPath;
+        // Idempotent service resolution — retries and re-deploys must REUSE the
+        // existing service, never re-create it (Render names are unique per
+        // workspace; blind creation 400s with "name already in use").
+        let service: Awaited<ReturnType<RenderAdapter["getService"]>> | null = null;
+        if (deployment.renderServiceId) {
+          service = await render.getService(deployment.renderServiceId).catch(() => null);
+        }
+        if (!service) {
+          service = await render.findServiceByName(backendServiceName, renderCreds.ownerId).catch(() => null);
+        }
 
-        const { service, deployId } = await render.createWebService(createParams);
+        let deployId: string;
+        if (service) {
+          await this.deploymentRepository.appendLog(
+            deploymentId,
+            `Reusing existing Render service (${service.id}) — updating configuration and redeploying…`,
+          );
+          // Repair config too — an earlier attempt may have created the service
+          // with wrong settings (e.g. missing rootDir).
+          await render.updateService(service.id, {
+            rootDir: backendSubPath,
+            buildCommand,
+            startCommand,
+          });
+          // Full intended env set — safe to replace wholesale.
+          await render.replaceEnvVars(service.id, backendEnvVars);
+          const dep = await render.triggerDeploy(service.id);
+          deployId = dep.id;
+        } else {
+          const createParams: Parameters<RenderAdapter["createWebService"]>[0] = {
+            name: backendServiceName,
+            repoUrl: `https://github.com/${repository.fullName}`,
+            branch,
+            runtime,
+            buildCommand,
+            startCommand,
+            envVars: backendEnvVars,
+            plan: "free",
+            ownerId: renderCreds.ownerId,
+          };
+          if (backendSubPath) createParams.rootDir = backendSubPath;
+
+          const created = await render.createWebService(createParams);
+          service = created.service;
+          deployId = created.deployId;
+        }
 
         await this.deploymentRepository.update(deploymentId, {
           renderServiceId: service.id,
