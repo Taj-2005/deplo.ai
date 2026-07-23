@@ -429,11 +429,22 @@ export class DeploymentOrchestrator {
         );
 
         await vercel.waitForDeployment(vDeploy.id);
-        const frontendUrl = stableFrontendUrl;
+
+        // Vercel project names are globally unique — verify the ACTUAL assigned
+        // domain instead of trusting the predicted one.
+        const actualDomain = await vercel.getProjectProductionDomain(project.id);
+        const frontendUrl = actualDomain ? `https://${actualDomain}` : stableFrontendUrl;
 
         await this.deploymentRepository.update(deploymentId, { frontendUrl });
         await this.deploymentRepository.appendLog(deploymentId, `Frontend live at ${frontendUrl}`);
         logger.info("Frontend deployed", { deploymentId, frontendUrl });
+
+        // If the assigned domain differs from what the backend was told at
+        // creation time, its CORS (FRONTEND_URL) points at the wrong origin —
+        // fix the env var and trigger a backend redeploy.
+        if (hasBackend && frontendUrl !== stableFrontendUrl) {
+          await this.fixBackendFrontendUrl(deploymentId, deployment.userId, frontendUrl);
+        }
       }
 
       // ── Complete ──────────────────────────────────────────────────────────
@@ -497,6 +508,45 @@ export class DeploymentOrchestrator {
     }
 
     return "src/index";
+  }
+
+  /**
+   * Correct the backend's FRONTEND_URL (CORS origin) when the frontend's real
+   * assigned domain differs from the predicted one. Best-effort — a failure
+   * here never fails the deployment, but is logged for the user.
+   */
+  private async fixBackendFrontendUrl(
+    deploymentId: string,
+    userId: string,
+    frontendUrl: string,
+  ): Promise<void> {
+    try {
+      // Re-fetch: renderServiceId was written during this run's backend phase.
+      const fresh = await this.deploymentRepository.findById(deploymentId);
+      const serviceId = fresh?.renderServiceId;
+      if (!serviceId) return;
+
+      const creds = await this.integrationService.resolveRenderCredentials(userId);
+      const render = new RenderAdapter(creds.apiKey);
+
+      await render.upsertEnvVar(serviceId, "FRONTEND_URL", frontendUrl);
+      await render.triggerDeploy(serviceId);
+
+      await this.deploymentRepository.appendLog(
+        deploymentId,
+        `Assigned frontend domain differs from the predicted one — updated backend FRONTEND_URL to ${frontendUrl} and triggered a backend redeploy. CORS will be correct once it completes (~2 min).`,
+      );
+      logger.info("Backend FRONTEND_URL corrected", { deploymentId, serviceId, frontendUrl });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await this.deploymentRepository
+        .appendLog(
+          deploymentId,
+          `Warning: frontend domain differs from predicted but backend CORS could not be updated automatically (${message}). Set FRONTEND_URL=${frontendUrl} on the Render service manually.`,
+        )
+        .catch(() => undefined);
+      logger.warn("Failed to correct backend FRONTEND_URL", { deploymentId, error: message });
+    }
   }
 
   /** Detect the backend's package manager from its lockfiles (component dir, then root). */

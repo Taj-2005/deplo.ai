@@ -149,8 +149,13 @@ export class RenderAdapter {
     });
   }
 
-  async addEnvVar(serviceId: string, key: string, value: string): Promise<void> {
-    await this.request("PUT", `/services/${serviceId}/env-vars`, [{ key, value }]);
+  /**
+   * Upsert a SINGLE env var via the per-key endpoint.
+   * Never use PUT /services/{id}/env-vars with a partial list — that endpoint
+   * REPLACES the entire variable set and would wipe user-provided vars.
+   */
+  async upsertEnvVar(serviceId: string, key: string, value: string): Promise<void> {
+    await this.request("PUT", `/services/${serviceId}/env-vars/${encodeURIComponent(key)}`, { value });
   }
 
   async suspendService(serviceId: string): Promise<void> {
