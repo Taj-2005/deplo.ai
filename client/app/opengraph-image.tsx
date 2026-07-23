@@ -72,7 +72,7 @@ export default async function OgImage() {
             </span>
           </div>
           <div style={{ display: "flex", fontSize: 27, color: "#9ba1a6", letterSpacing: -0.5 }}>
-            AI-powered deployments — GitHub in, live URLs out in under 3 minutes.
+            AI-powered deploys into accounts you own — no lock-in, live URLs in minutes.
           </div>
         </div>
 

@@ -5,7 +5,7 @@ const softwareApplication = {
   applicationCategory: "DeveloperApplication",
   operatingSystem: "Web",
   description:
-    "AI-powered deployment orchestration platform. Connect your GitHub repo and deplo.ai detects your stack, deploys frontend to Vercel and backend to Render, syncs environment variables, and returns production-ready URLs in under 3 minutes.",
+    "AI-powered deployment orchestration that deploys your app across providers into accounts you own — no lock-in, no YAML. deplo.ai detects your stack from your repo, deploys frontend to your Vercel account and backend to your Render workspace, syncs environment variables, and returns production-ready URLs in minutes.",
   url: "https://www.deplo.in",
   offers: {
     "@type": "Offer",
@@ -13,6 +13,9 @@ const softwareApplication = {
     priceCurrency: "USD",
   },
   featureList: [
+    "Deploys Into Your Own Cloud Accounts",
+    "Cross-Provider Orchestration",
+    "No Vendor Lock-In",
     "GitHub Integration",
     "Automatic Stack Detection",
     "Vercel Deployment",
@@ -36,7 +39,7 @@ const organization = {
   url: "https://www.deplo.in",
   logo: "https://www.deplo.in/icon-512.png",
   description:
-    "deplo.ai is an AI-powered deployment orchestration platform that connects GitHub repositories to production infrastructure — automatically deploying frontend apps to Vercel and backend services to Render without any DevOps expertise required.",
+    "deplo.ai is an AI-powered deployment orchestration platform that deploys applications across providers into accounts the user owns — frontend to their Vercel account, backend to their Render workspace. No vendor lock-in: users keep every project, deployment, log, and domain.",
   foundingDate: "2024",
   // Entity consolidation — every official profile that links back to deplo.in
   // strengthens the brand→site binding. Add LinkedIn/GitHub/Product Hunt URLs
@@ -52,7 +55,7 @@ const webSite = {
   alternateName: ["deplo", "deplo ai", "Deplo AI"],
   url: "https://www.deplo.in",
   description:
-    "AI-powered deployment orchestration. Connect GitHub. Get production URLs.",
+    "AI-powered deploys across providers into accounts you own. No lock-in, no YAML — production URLs in minutes.",
 };
 
 export function StructuredData() {
