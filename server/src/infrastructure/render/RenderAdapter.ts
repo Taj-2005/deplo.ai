@@ -71,6 +71,10 @@ export class RenderAdapter {
       repo: params.repoUrl,
       branch: params.branch,
       autoDeploy: "yes",
+      // rootDir is a TOP-LEVEL service field. Nesting it in serviceDetails is
+      // silently ignored by the API (verified live: service came back with
+      // rootDir "" and built at the repo root → exit 254 on monorepos).
+      ...(params.rootDir ? { rootDir: params.rootDir } : {}),
       serviceDetails: {
         // Modern API field — `env` is deprecated (verified against current docs).
         runtime: params.runtime,
@@ -81,7 +85,6 @@ export class RenderAdapter {
           startCommand: params.startCommand,
         },
         envVars: params.envVars.map((v) => ({ key: v.key, value: v.value })),
-        ...(params.rootDir ? { rootDir: params.rootDir } : {}),
       },
     };
 
@@ -134,6 +137,47 @@ export class RenderAdapter {
 
   async getService(serviceId: string): Promise<RenderService> {
     return this.request<RenderService>("GET", `/services/${serviceId}`);
+  }
+
+  /**
+   * Update an existing service's config (rootDir / build / start). Used by the
+   * idempotent reuse path so a retried deployment also REPAIRS services that
+   * were created with stale or wrong settings.
+   */
+  async updateService(
+    serviceId: string,
+    params: { rootDir?: string; buildCommand?: string; startCommand?: string },
+  ): Promise<void> {
+    const body: Record<string, unknown> = {};
+    if (params.rootDir !== undefined) body["rootDir"] = params.rootDir;
+    if (params.buildCommand !== undefined || params.startCommand !== undefined) {
+      body["serviceDetails"] = {
+        envSpecificDetails: {
+          ...(params.buildCommand !== undefined ? { buildCommand: params.buildCommand } : {}),
+          ...(params.startCommand !== undefined ? { startCommand: params.startCommand } : {}),
+        },
+      };
+    }
+    if (Object.keys(body).length === 0) return;
+    await this.request("PATCH", `/services/${serviceId}`, body);
+  }
+
+  /** Find a service by exact name in the given workspace (null if absent). */
+  async findServiceByName(name: string, ownerId: string): Promise<RenderService | null> {
+    const results = await this.request<Array<{ service: RenderService }>>(
+      "GET",
+      `/services?name=${encodeURIComponent(name)}&ownerId=${encodeURIComponent(ownerId)}&limit=20`,
+    );
+    return results.find((r) => r.service.name === name)?.service ?? null;
+  }
+
+  /**
+   * Replace the service's FULL environment variable set. Only call with the
+   * complete intended list (deplo.ai composes runtime + wiring + user vars) —
+   * this endpoint deletes anything not included.
+   */
+  async replaceEnvVars(serviceId: string, vars: Array<{ key: string; value: string }>): Promise<void> {
+    await this.request("PUT", `/services/${serviceId}/env-vars`, vars.map((v) => ({ key: v.key, value: v.value })));
   }
 
   async getDeploy(serviceId: string, deployId: string): Promise<RenderDeploy> {
