@@ -264,6 +264,25 @@ export class VercelAdapter {
     return this.request<VercelDeployment>("GET", `/v13/deployments/${deploymentId}`);
   }
 
+  /**
+   * The project's actual assigned *.vercel.app domain. Project names are
+   * globally unique across Vercel, so the predicted `<name>.vercel.app` can
+   * differ from what was really assigned — always verify after deploy.
+   * Returns null when it cannot be determined.
+   */
+  async getProjectProductionDomain(projectId: string): Promise<string | null> {
+    try {
+      const { domains } = await this.request<{ domains: Array<{ name: string }> }>(
+        "GET",
+        `/v9/projects/${projectId}/domains`,
+      );
+      const vercelApp = domains.find((d) => d.name.endsWith(".vercel.app"));
+      return vercelApp?.name ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   async upsertProjectEnvVars(
     projectId: string,
     vars: Array<{ key: string; value: string; target: Array<"production" | "preview" | "development"> }>,

@@ -7,6 +7,7 @@ deploy.html
 dist/
 .next/
 out/
+test/
 
 # Environment files — NEVER commit real .env files
 # *.env catches renamed copies too (e.g. deplo.ai.env, backup.env)
