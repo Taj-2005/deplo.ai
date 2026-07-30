@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import {
+import { Activity,
   TrendingUp,
   Server,
   Zap,
@@ -67,8 +67,15 @@ function ProjectCard({ dep }: { dep: Deployment }) {
   const isBuilding = isActiveStatus(dep.status);
   const isFailed = dep.status === "FAILED";
 
+  const router = useRouter();
   return (
-    <div className="bg-ds-surface border border-ds-outline-variant p-6 hover:shadow-lg transition-shadow relative overflow-hidden">
+    <div
+      onClick={() => router.push(`/dashboard/deployments/${dep.id}`)}
+      role="link"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === "Enter" && router.push(`/dashboard/deployments/${dep.id}`)}
+      className="bg-ds-surface border border-ds-outline-variant p-6 hover:shadow-lg transition-shadow relative overflow-hidden cursor-pointer"
+    >
       <div
         className={`absolute top-0 inset-x-0 h-[2px] ${
           dep.status === "COMPLETED"
@@ -104,6 +111,7 @@ function ProjectCard({ dep }: { dep: Deployment }) {
                 <span className="text-ds-outline">Frontend</span>
                 <a
                   href={dep.frontendUrl}
+                  onClick={(e) => e.stopPropagation()}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1 text-ds-on-surface hover:underline truncate max-w-[160px]"
@@ -118,6 +126,7 @@ function ProjectCard({ dep }: { dep: Deployment }) {
                 <span className="text-ds-outline">Backend</span>
                 <a
                   href={dep.backendUrl}
+                  onClick={(e) => e.stopPropagation()}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1 text-ds-on-surface hover:underline truncate max-w-[160px]"
@@ -131,6 +140,14 @@ function ProjectCard({ dep }: { dep: Deployment }) {
               <span className="text-ds-outline">Last deploy</span>
               <span className="text-ds-on-surface">{formatRelativeTime(dep.updatedAt)}</span>
             </div>
+            <a
+              href={`/dashboard/monitoring/${dep.repositoryId}`}
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-1.5 text-ds-primary hover:opacity-80 transition-opacity pt-1"
+            >
+              <Activity size={11} strokeWidth={1.5} />
+              Monitoring &amp; analytics
+            </a>
           </>
         )}
         {isBuilding && (
@@ -154,6 +171,9 @@ function ProjectCard({ dep }: { dep: Deployment }) {
               <span className="text-ds-outline">Time</span>
               <span className="text-ds-on-surface">{formatRelativeTime(dep.updatedAt)}</span>
             </div>
+            <span className="flex items-center gap-1.5 text-red-600 dark:text-red-400 pt-1">
+              View log, AI diagnosis &amp; retry →
+            </span>
           </>
         )}
       </div>

@@ -162,6 +162,24 @@ export class RenderAdapter {
     await this.request("PATCH", `/services/${serviceId}`, body);
   }
 
+  /**
+   * Time-series metric for a service (cpu | memory | http-requests).
+   * Timestamps must be RFC3339 — unix seconds are rejected (verified live).
+   */
+  async getMetric(
+    metric: "cpu" | "memory" | "http-requests",
+    serviceId: string,
+    start: Date,
+    end: Date,
+  ): Promise<Array<{ timestamp: string; value: number }>> {
+    const qs = `resource=${serviceId}&startTime=${encodeURIComponent(start.toISOString())}&endTime=${encodeURIComponent(end.toISOString())}`;
+    const series = await this.request<Array<{ values: Array<{ timestamp: string; value: number }> }>>(
+      "GET",
+      `/metrics/${metric}?${qs}`,
+    );
+    return series[0]?.values ?? [];
+  }
+
   /** Find a service by exact name in the given workspace (null if absent). */
   async findServiceByName(name: string, ownerId: string): Promise<RenderService | null> {
     const results = await this.request<Array<{ service: RenderService }>>(

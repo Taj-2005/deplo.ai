@@ -52,6 +52,7 @@ interface ApiRepository {
 
 interface ApiDeployment {
   id: string;
+  repositoryId: string;
   repositoryName: string;
   repositoryFullName: string;
   status: string;
@@ -95,6 +96,7 @@ export async function fetchDeployments(): Promise<Deployment[]> {
   const data = await apiFetch<ApiDeployment[]>("/deployments");
   return data.map((d) => ({
     id: d.id,
+    repositoryId: d.repositoryId,
     repositoryName: d.repositoryName,
     repositoryFullName: d.repositoryFullName,
     status: d.status as Deployment["status"],
@@ -144,6 +146,7 @@ export async function fetchDeployment(deploymentId: string): Promise<DeploymentD
   const d = await apiFetch<ApiDeployment & { logs: string[]; error: string | null; envVariables: Array<{ key: string; isRequired: boolean }> }>(`/deployments/${deploymentId}`);
   return {
     id: d.id,
+    repositoryId: d.repositoryId,
     repositoryName: d.repositoryName,
     repositoryFullName: d.repositoryFullName,
     status: d.status as Deployment["status"],
@@ -219,4 +222,56 @@ export async function connectRender(apiKey: string): Promise<{
 
 export async function disconnectRender(): Promise<void> {
   await apiFetch("/integrations/render", { method: "DELETE" });
+}
+
+// ─── Project monitoring & analytics ───────────────────────────────────────────
+
+export interface UptimePoint {
+  t: string;
+  ok: boolean;
+  latencyMs: number | null;
+}
+
+export interface TargetHealth {
+  url: string | null;
+  current: { ok: boolean; httpStatus: number | null; latencyMs: number | null; checkedAt: string } | null;
+  uptime24h: number | null;
+  series: UptimePoint[];
+}
+
+export interface ProjectMonitoring {
+  project: { id: string; name: string; fullName: string };
+  frontend: TargetHealth;
+  backend: TargetHealth;
+  server: {
+    state: string;
+    cpu: Array<{ timestamp: string; value: number }>;
+    memory: Array<{ timestamp: string; value: number }>;
+  } | null;
+  lastDeployment: { id: string; at: string | null; branch: string } | null;
+  latestAttempt: {
+    id: string;
+    status: string;
+    error: string | null;
+    branch: string;
+    at: string;
+    isNewerThanLive: boolean;
+  } | null;
+}
+
+export interface ProjectAnalytics {
+  days: number;
+  totals: { views: number; visitors: number };
+  daily: Array<{ day: string; views: number; visitors: number }>;
+  topPaths: Array<{ path: string; views: number }>;
+  topReferrers: Array<{ referrer: string; views: number }>;
+  snippet: string;
+}
+
+export async function getProjectMonitoring(repoId: string): Promise<ProjectMonitoring> {
+  return apiFetch<ProjectMonitoring>(`/projects/${repoId}/monitoring`);
+}
+
+export async function getProjectAnalytics(repoId: string, days = 7): Promise<ProjectAnalytics> {
+  return apiFetch<ProjectAnalytics>(`/projects/${repoId}/analytics?days=${days}`);
 }

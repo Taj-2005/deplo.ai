@@ -67,9 +67,44 @@ model Repository {
 
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   deployments Deployment[]
+  uptimeSamples UptimeSample[]
+  analyticsEvents AnalyticsEvent[]
 
   @@index([userId])
   @@index([githubRepoId])
+}
+
+// ── Monitoring ────────────────────────────────────────────────────────────────
+
+// One health probe result against a deployed project's live URL.
+model UptimeSample {
+  id           String   @id @default(cuid())
+  repositoryId String
+  target       String // "FRONTEND" | "BACKEND"
+  url          String
+  ok           Boolean
+  httpStatus   Int?
+  latencyMs    Int?
+  checkedAt    DateTime @default(now())
+
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@index([repositoryId, checkedAt])
+}
+
+// One product-analytics event (pageview) from the opt-in insights snippet.
+model AnalyticsEvent {
+  id           String   @id @default(cuid())
+  repositoryId String
+  path         String
+  referrer     String?
+  visitorHash  String // sha256(ip|ua|day|repo) — daily-unique, no PII stored
+  createdAt    DateTime @default(now())
+
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@index([repositoryId, createdAt])
+  @@index([repositoryId, visitorHash, createdAt])
 }
 
 model Deployment {

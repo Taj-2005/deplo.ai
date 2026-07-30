@@ -27,6 +27,7 @@ import { CacheService } from "./infrastructure/redis/CacheService";
 import { GitHubAdapter } from "./infrastructure/github/GitHubAdapter";
 import { getDeploymentQueue } from "./infrastructure/queue/DeploymentQueue";
 import { createDeploymentWorker } from "./infrastructure/queue/DeploymentWorker";
+import { startMonitoring } from "./infrastructure/queue/MonitoringWorker";
 
 // ── Application Services ──────────────────────────────────────────────────────
 import { AuthService } from "./application/services/AuthService";
@@ -48,6 +49,7 @@ import { DeploymentsController } from "./interfaces/http/controllers/deployments
 import { StatsController } from "./interfaces/http/controllers/stats.controller";
 import { WebhooksController } from "./interfaces/http/controllers/webhooks.controller";
 import { IntegrationsController } from "./interfaces/http/controllers/integrations.controller";
+import { MonitoringController } from "./interfaces/http/controllers/monitoring.controller";
 import { createAuthMiddleware } from "./interfaces/http/middleware/auth.middleware";
 import { asyncHandler } from "./shared/utils/asyncHandler";
 
@@ -129,6 +131,9 @@ async function bootstrap(): Promise<void> {
   const worker = createDeploymentWorker(workerRedis, orchestrator);
   logger.info("Deployment worker started");
 
+  startMonitoring(workerRedis, prisma);
+  logger.info("Uptime monitoring started (5-minute probes)");
+
   // ── Express app ───────────────────────────────────────────────────────────
   const app = express();
 
@@ -190,6 +195,7 @@ async function bootstrap(): Promise<void> {
     integrationService,
   );
   const integrationsController = new IntegrationsController(integrationService);
+  const monitoringController = new MonitoringController(prisma, integrationService);
 
   // ── Public routes ─────────────────────────────────────────────────────────
   api.get("/health", asyncHandler(healthController.check));
@@ -200,6 +206,10 @@ async function bootstrap(): Promise<void> {
   api.get("/integrations/vercel/callback", asyncHandler(integrationsController.vercelCallback));
 
   // Webhooks — no user auth (signature validation inside controllers)
+  api.get("/public/insights.js", monitoringController.script);
+  api.get("/public/insights/:repoId", asyncHandler(monitoringController.ingest));
+  api.post("/public/insights/:repoId", asyncHandler(monitoringController.ingest));
+
   api.post("/webhooks/vercel", asyncHandler(webhooksController.vercel));
   api.post("/webhooks/github", asyncHandler(webhooksController.github));
 
@@ -222,6 +232,9 @@ async function bootstrap(): Promise<void> {
   api.delete("/integrations/vercel", asyncHandler(integrationsController.vercelDisconnect));
   api.post("/integrations/render", asyncHandler(integrationsController.renderConnect));
   api.delete("/integrations/render", asyncHandler(integrationsController.renderDisconnect));
+
+  api.get("/projects/:repoId/monitoring", asyncHandler(monitoringController.monitoring));
+  api.get("/projects/:repoId/analytics", asyncHandler(monitoringController.analytics));
 
   api.get("/stats", asyncHandler(statsController.get));
 

@@ -40,6 +40,7 @@ export interface Repository {
 
 export interface Deployment {
   id: string;
+  repositoryId: string;
   repositoryName: string;
   repositoryFullName: string;
   status: DeploymentStatus;

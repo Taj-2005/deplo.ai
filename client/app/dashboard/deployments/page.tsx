@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { RefreshCw, GitBranch, Clock, ExternalLink, Rocket, Unplug, KeyRound } from "lucide-react";
+import { RefreshCw, GitBranch, Clock, ExternalLink, Rocket, Unplug, KeyRound, Activity } from "lucide-react";
 import { useDeployments } from "@/hooks/useDashboardData";
 import { DeploymentStatusBadge } from "@/components/dashboard/DeploymentStatusBadge";
 import { EmptyState } from "@/components/dashboard/EmptyState";
@@ -104,16 +104,26 @@ function DeploymentRow({ dep }: { dep: Deployment }) {
           <p className="text-[12px] font-mono text-ds-outline">{stackStr}</p>
         )}
         {url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={stopProp}
-            className="inline-flex items-center gap-1 text-[11px] font-mono text-ds-primary hover:underline mt-0.5"
-          >
-            <ExternalLink size={10} strokeWidth={1.5} />
-            {url.replace(/^https?:\/\//, "")}
-          </a>
+          <span className="inline-flex items-center gap-3 mt-0.5">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={stopProp}
+              className="inline-flex items-center gap-1 text-[11px] font-mono text-ds-primary hover:underline"
+            >
+              <ExternalLink size={10} strokeWidth={1.5} />
+              {url.replace(/^https?:\/\//, "")}
+            </a>
+            <a
+              href={`/dashboard/monitoring/${dep.repositoryId}`}
+              onClick={stopProp}
+              className="inline-flex items-center gap-1 text-[11px] font-mono text-ds-on-variant hover:text-ds-on-surface"
+            >
+              <Activity size={10} strokeWidth={1.5} />
+              Monitoring
+            </a>
+          </span>
         )}
         {active && (
           <div className="mt-2 flex items-center gap-2">

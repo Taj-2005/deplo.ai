@@ -66,6 +66,7 @@ export class DeploymentsController {
         const repo = repoMap.get(dep.repositoryId);
         return {
           id: dep.id,
+          repositoryId: dep.repositoryId,
           repositoryName: repo?.name ?? dep.repositoryId,
           repositoryFullName: repo?.fullName ?? dep.repositoryId,
           status: dep.status,
@@ -94,7 +95,8 @@ export class DeploymentsController {
 
     res.json({
       id: dep.id,
-      repositoryName: repo?.name ?? dep.repositoryId,
+      repositoryId: dep.repositoryId,
+          repositoryName: repo?.name ?? dep.repositoryId,
       repositoryFullName: repo?.fullName ?? dep.repositoryId,
       status: dep.status,
       branch: dep.branch,

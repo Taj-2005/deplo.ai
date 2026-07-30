@@ -1,9 +1,12 @@
 "use client";
 
+import Link from "next/link";
+
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useParams } from "next/navigation";
 import {
+  Activity,
   ArrowLeft,
   ExternalLink,
   Copy,
@@ -502,6 +505,17 @@ export default function DeploymentDetailPage() {
       )}
 
       {/* Waiting for env — full form */}
+      {/* Always-available monitoring entry — works from any status */}
+      <div className="mb-4">
+        <Link
+          href={`/dashboard/monitoring/${dep.repositoryId}`}
+          className="inline-flex items-center gap-1.5 text-[12px] font-mono text-ds-on-variant hover:text-ds-on-surface transition-colors"
+        >
+          <Activity size={12} strokeWidth={1.5} />
+          Project monitoring &amp; analytics
+        </Link>
+      </div>
+
       {waitingForEnv && dep.envVariables.length > 0 && (
         <EnvVarForm dep={dep} onSubmitted={() => void load()} />
       )}
@@ -509,9 +523,18 @@ export default function DeploymentDetailPage() {
       {/* Deployment URLs */}
       {hasUrls ? (
         <section className="mb-6">
-          <h2 className="text-[11px] font-mono font-medium text-ds-on-variant uppercase tracking-[0.08em] mb-3">
-            Live URLs
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-[11px] font-mono font-medium text-ds-on-variant uppercase tracking-[0.08em]">
+              Live URLs
+            </h2>
+            <Link
+              href={`/dashboard/monitoring/${dep.repositoryId}`}
+              className="flex items-center gap-1.5 text-[12px] font-mono text-ds-primary hover:opacity-80 transition-opacity"
+            >
+              <Activity size={12} strokeWidth={1.5} />
+              Monitoring &amp; analytics
+            </Link>
+          </div>
           <div className="space-y-2">
             {dep.frontendUrl && <UrlCard label="Frontend" url={dep.frontendUrl} />}
             {dep.backendUrl && <UrlCard label="Backend API" url={dep.backendUrl} />}
