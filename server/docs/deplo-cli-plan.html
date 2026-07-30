@@ -146,6 +146,18 @@
   .status i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
   .s-live i { background: var(--good); } .s-live { color: var(--good); }
   .s-new i { background: var(--violet); } .s-new { color: var(--violet); }
+  .s-cli i { background: var(--cyan); } .s-cli { color: var(--cyan); }
+
+  .steps { list-style: none; counter-reset: s; margin: 20px 0 0; padding: 0; display: grid; gap: 10px; }
+  .steps li { position: relative; counter-increment: s; padding: 12px 18px 12px 52px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--panel); font-size: 0.92rem; }
+  .steps li::before {
+    content: counter(s); position: absolute; left: 16px; top: 12px;
+    font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--cyan);
+    border: 1px solid var(--hairline); border-radius: 50%; width: 22px; height: 22px;
+    display: grid; place-items: center; background: var(--paper);
+  }
+  .steps li b { display: block; font-weight: 650; margin-bottom: 2px; }
+  .steps li span { color: var(--muted); }
 
   .phases { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 12px; }
   .phases li { display: grid; grid-template-columns: 84px 1fr auto; gap: 16px; align-items: baseline; border: 1px solid var(--hairline); border-radius: 8px; padding: 14px 18px; }
@@ -173,7 +185,7 @@
 <div class="wrap">
   <p class="eyebrow">deplo.ai · product plan · v0.1 → v0.3</p>
   <h1>deplo CLI — production URLs, without leaving the terminal</h1>
-  <p class="lede">Everything the dashboard does today — <strong>Vercel frontends and Render backends deployed into accounts the user owns</strong>, stack detection, env wiring, AI failure diagnosis, monitoring — exposed as one command. The CLI is a thin client over the existing REST API: <strong>no new orchestration, one small auth addition</strong>.</p>
+  <p class="lede">Everything the dashboard does today — <strong>Vercel frontends and Render backends deployed into accounts the user owns</strong>, stack detection, env wiring, AI failure diagnosis, monitoring — exposed as one command. The CLI is a thin client over the existing REST API: <strong>no new orchestration, one small auth addition</strong>. It installs from a public registry on any machine and takes a brand-new user from <code>install</code> to a live URL <strong>without ever opening the dashboard</strong>.</p>
 
   <div class="term" role="img" aria-label="Terminal demo of the deplo command deploying a fullstack repo">
     <div class="term-bar"><span></span><span></span><span></span><b>~/projects/my-app</b></div>
@@ -223,7 +235,7 @@
 
   <section>
     <h2>Feature parity — what works today, mirrored in the CLI</h2>
-    <p class="sub">Every row maps a shipped platform capability to its CLI surface. Nothing here requires new backend features.</p>
+    <p class="sub">Every row maps a shipped platform capability to its CLI surface. Only the last two rows are new work — everything above them is an endpoint the dashboard already calls today.</p>
     <div class="tblwrap">
     <table>
       <thead><tr><th>Platform capability (live today)</th><th>CLI surface</th><th>Status</th></tr></thead>
@@ -237,7 +249,12 @@
         <tr><td>Uptime / latency / Render CPU &amp; memory monitoring</td><td><code>deplo monitor</code></td><td><span class="status s-live"><i></i>API live</span></td></tr>
         <tr><td>Product analytics (views, visitors, top pages)</td><td><code>deplo analytics</code></td><td><span class="status s-live"><i></i>API live</span></td></tr>
         <tr><td>Integration status (Vercel OAuth, Render key)</td><td><code>deplo whoami</code></td><td><span class="status s-live"><i></i>API live</span></td></tr>
+        <tr><td>GitHub sign-in + repo scopes (<code>/auth/github</code>)</td><td><code>deplo login</code></td><td><span class="status s-live"><i></i>API live</span></td></tr>
+        <tr><td>Vercel OAuth install URL (<code>/integrations/vercel/install-url</code>)</td><td><code>deplo connect vercel</code></td><td><span class="status s-live"><i></i>API live</span></td></tr>
+        <tr><td>Render API-key connect (<code>POST /integrations/render</code>)</td><td><code>deplo connect render</code></td><td><span class="status s-live"><i></i>API live</span></td></tr>
+        <tr><td>Repo sync from GitHub (<code>POST /repos/sync</code>)</td><td>automatic on first <code>deploy</code></td><td><span class="status s-live"><i></i>API live</span></td></tr>
         <tr><td>Long-lived CLI auth tokens</td><td><code>deplo login</code></td><td><span class="status s-new"><i></i>new — only server work</span></td></tr>
+        <tr><td>Browser hand-off page <code>/cli-auth</code></td><td>backs <code>deplo login</code></td><td><span class="status s-new"><i></i>new — one client page</span></td></tr>
       </tbody>
     </table>
     </div>
@@ -251,8 +268,11 @@
     <table>
       <thead><tr><th>Command</th><th>Behavior</th></tr></thead>
       <tbody>
-        <tr><td><code>deplo login</code></td><td>Paste a CLI token from the dashboard (Settings → CLI). <code>--token</code> flag for scripts. Stored at <code>~/.config/deplo/config.json</code> with <code>0600</code> permissions.</td></tr>
-        <tr><td><code>deplo</code> / <code>deplo deploy</code></td><td>Reads the git remote of the current directory, matches it to a synced repo, triggers a deployment, and <b>follows the live deployment log</b> in the terminal. Ends with both production URLs. <code>--yes</code> skips confirmation.</td></tr>
+        <tr><td><code>deplo login</code></td><td>Opens the browser to <code>deplo.in/cli-auth?port=…</code>, signing in with GitHub if needed, and receives a token on a loopback listener. <code>--token</code> pastes one manually (headless boxes, CI, SSH). Stored at <code>~/.config/deplo/config.json</code>, <code>0600</code>.</td></tr>
+        <tr><td><code>deplo connect vercel</code></td><td>Fetches the Vercel install URL, opens it, then polls <code>/integrations</code> until the connection lands. <code>--print-url</code> for headless machines — copy the link to any browser and come back.</td></tr>
+        <tr><td><code>deplo connect render</code></td><td>Prompts for a Render API key (masked input, never echoed) and posts it to <code>/integrations/render</code>. No browser needed at all. <code>--key</code> for scripts.</td></tr>
+        <tr><td><code>deplo whoami</code></td><td>Account, GitHub login, and a connection checklist: Vercel ✓/✗, Render ✓/✗. Tells the user exactly which <code>connect</code> command is still missing.</td></tr>
+        <tr><td><code>deplo</code> / <code>deplo deploy</code></td><td>Reads the git remote of the current directory, syncs repos if it's unseen, matches it to a synced repo, triggers a deployment, and <b>follows the live deployment log</b>. Ends with both production URLs. Missing prerequisites trigger the matching <code>login</code>/<code>connect</code> step inline rather than an error. <code>--yes</code> skips confirmation.</td></tr>
         <tr><td><code>deplo status</code></td><td>Latest deployment state for the current repo; <code>--all</code> for every project.</td></tr>
         <tr><td><code>deplo list</code></td><td>All projects with status dots, stack, and URLs.</td></tr>
         <tr><td><code>deplo logs [id]</code></td><td>Full deployment log; keeps following while the deployment is active.</td></tr>
@@ -286,6 +306,50 @@
   </section>
 
   <section>
+    <h2>First run on a machine that has never seen deplo</h2>
+    <p class="sub">The CLI must not assume a dashboard visit ever happened. A developer who finds <code>deplo-cli</code> on npm gets the whole onboarding — GitHub sign-in, Vercel connect, Render key — in the terminal, and the dashboard becomes optional rather than a prerequisite.</p>
+
+    <div class="term" role="img" aria-label="Terminal transcript of a first-time user onboarding entirely from the CLI">
+      <div class="term-bar"><span></span><span></span><span></span><b>~/projects/my-app — fresh machine</b></div>
+      <pre>
+<span class="c">$</span> npx deplo-cli login
+
+<span class="d">→ opening</span> https://www.deplo.in/cli-auth?port=51734
+<span class="d">  (no browser? run</span> deplo login --token <span class="d">and paste one instead)</span>
+  <span class="g">✓</span> signed in            <span class="c">you@github</span> <span class="d">· token saved to ~/.config/deplo/config.json</span>
+
+<span class="c">$</span> deplo whoami
+
+  <span class="g">✓</span> account              you@github
+  <span class="r">✗</span> vercel               not connected  <span class="d">→ deplo connect vercel</span>
+  <span class="r">✗</span> render               not connected  <span class="d">→ deplo connect render</span>
+
+<span class="c">$</span> deplo connect vercel
+<span class="d">→ opening Vercel authorization…  waiting</span>
+  <span class="g">✓</span> connected            <span class="c">vercel: you</span> <span class="d">(hobby)</span>
+
+<span class="c">$</span> deplo connect render
+<span class="d">? Render API key</span> <span class="v">············································</span>
+  <span class="g">✓</span> connected            <span class="c">render: you</span>
+
+<span class="c">$</span> deplo
+<span class="d">→ syncing repos from GitHub…  17 found, 1 matched this directory</span>
+<span class="g">● Deployed in 2:41</span> — <span class="d">code went in, production URLs came out.</span>
+      </pre>
+    </div>
+
+    <ol class="steps">
+      <li><b>Install — no account required</b><span>Public npm package. <code>npx deplo-cli</code> runs on any machine with Node 20+; the Homebrew tap and install script cover machines without Node.</span></li>
+      <li><b><code>deplo login</code> — GitHub, in the browser</b><span>Loopback hand-off against the existing <code>/auth/github</code> OAuth flow. First-time users sign up in the same step — there is no separate "create an account" path to document.</span></li>
+      <li><b><code>deplo connect vercel</code> — OAuth, then poll</b><span>Uses the live <code>/integrations/vercel/install-url</code> endpoint. The CLI never sees the Vercel token; it just polls <code>/integrations</code> until the server reports <code>connected: true</code>.</span></li>
+      <li><b><code>deplo connect render</code> — masked paste</b><span>Render has no OAuth app, so the key is pasted once and posted to <code>/integrations/render</code>, where it's encrypted server-side exactly as the dashboard does it. Never written to the CLI config file.</span></li>
+      <li><b><code>deplo</code> — sync and ship</b><span>Repos sync on demand, the git remote is matched, and the deploy runs. Any missing prerequisite from steps 2–4 is offered inline instead of failing.</span></li>
+    </ol>
+
+    <div class="note"><b>Never a dead end:</b> every browser step has a headless twin — <code>login --token</code>, <code>connect vercel --print-url</code>, <code>connect render --key</code> — so SSH sessions, devcontainers, WSL and CI runners are first-class rather than unsupported.</div>
+  </section>
+
+  <section>
     <h2>When a deploy fails</h2>
     <p class="sub">The same Groq diagnosis that powers the failure email renders in the terminal — cause, affected file, and a prompt the developer can paste into Cursor or Claude Code.</p>
     <div class="term" role="img" aria-label="Terminal output of a failed deployment with AI diagnosis">
@@ -309,20 +373,62 @@
 
   <section>
     <h2>Auth — the only real server work</h2>
-    <p class="sub">Browser JWTs expire in 7 days; a CLI needs revocable long-lived tokens.</p>
+    <p class="sub">Browser JWTs expire in 7 days; a CLI needs revocable long-lived tokens. Both phases now ship in v0.1 — the hand-off is what makes the CLI usable by someone who has never opened the dashboard, so it is no longer a v0.3 nicety.</p>
     <div class="grid2">
       <div class="card">
-        <p class="k">PHASE 1 · SHIPS WITH v0.1</p>
-        <h4>Paste token</h4>
-        <p>Dashboard → Settings → "Create CLI token". New <code>CliToken</code> table (hashed, named, revocable, <span class="num">last-used</span> tracked) + auth middleware accepting it. Additive migration, ~1 day.</p>
+        <p class="k">PHASE 1 · BUILT</p>
+        <h4>Token primitive</h4>
+        <p><code>CliToken</code> table (SHA-256 hashed, named, revocable, <span class="num">last-used</span> tracked), <code>CliTokenService</code>, <code>POST/GET/DELETE /cli-tokens</code>, and auth middleware that resolves a <code>dpl_…</code> bearer instead of verifying a JWT. Additive migration, already on <code>feat/deplo-cli</code>.</p>
       </div>
       <div class="card">
-        <p class="k">PHASE 2 · v0.3</p>
+        <p class="k">PHASE 2 · SHIPS WITH v0.1</p>
         <h4>Browser hand-off</h4>
-        <p><code>deplo login</code> opens <code>deplo.in/cli-auth?port=…</code>; the already-signed-in browser approves and redirects to <code>localhost</code> with the token. No copy-paste.</p>
+        <p><code>deplo login</code> starts a loopback listener and opens <code>deplo.in/cli-auth?port=…</code>. The page signs the user in with GitHub if needed, mints a token named after the machine, and redirects to <code>127.0.0.1:&lt;port&gt;</code>. One new client page; no new API.</p>
+      </div>
+      <div class="card">
+        <p class="k">FALLBACK · SHIPS WITH v0.1</p>
+        <h4>Paste token</h4>
+        <p>Dashboard → Settings → "Create CLI token" for machines with no browser, plus <code>deplo login --token</code> and the <code>DEPLO_TOKEN</code> env var for CI. Same endpoint, different entry point.</p>
+      </div>
+      <div class="card">
+        <p class="k">HARDENING</p>
+        <h4>Before the package is public</h4>
+        <p>Rate-limit token creation, bind the hand-off to a single-use nonce with a short TTL, only ever redirect to a loopback address, and show token <code>name</code> + <code>lastUsedAt</code> in Settings so a leaked machine token is obvious and revocable.</p>
       </div>
     </div>
-    <div class="note"><b>Security posture:</b> the CLI stores one deplo token, never provider credentials. Vercel OAuth tokens and Render API keys stay encrypted server-side, exactly as today.</div>
+    <div class="note"><b>Security posture:</b> the CLI stores one deplo token, never provider credentials. Vercel OAuth tokens and Render API keys stay encrypted server-side, exactly as today — <code>connect render</code> posts the key straight through and keeps nothing on disk.</div>
+  </section>
+
+  <section>
+    <h2>Distribution — how anyone gets it</h2>
+    <p class="sub">Nothing here needs anyone's permission: npm and a Homebrew tap are both self-publish. The only gated channel is Homebrew's core repository, which is a later milestone rather than a launch step.</p>
+
+    <div class="term">
+      <div class="term-bar"><span></span><span></span><span></span><b>install — pick one</b></div>
+      <pre>
+<span class="c">$</span> npx deplo-cli login                          <span class="d"># no install, always latest</span>
+<span class="c">$</span> npm i -g deplo-cli                           <span class="d"># then just: deplo</span>
+<span class="c">$</span> brew install deplo-ai/tap/deplo              <span class="d"># macOS + Linuxbrew, no Node needed</span>
+<span class="c">$</span> curl -fsSL https://deplo.in/install.sh | sh  <span class="d"># CI images, bare Linux</span>
+      </pre>
+    </div>
+
+    <div class="tblwrap">
+    <table>
+      <thead><tr><th>Channel</th><th>What it takes to ship it</th><th>When</th></tr></thead>
+      <tbody>
+        <tr><td><b>npm</b></td><td>Publish <code>deplo-cli</code> public and unscoped, <code>bin: { deplo }</code>, <code>files: ["dist"]</code>, <code>engines.node &gt;= 20</code>, shebang on the entry file. Release from CI with an automation token and <code>--provenance</code> so the npm page shows a verified build.</td><td><span class="status s-cli"><i></i>v0.1</span></td></tr>
+        <tr><td><b>Homebrew tap</b></td><td>A public repo named <code>homebrew-tap</code> under the deplo org with <code>Formula/deplo.rb</code>. No review, live on push. Formula points at the platform binaries attached to the GitHub Release; a release job recomputes the <code>sha256</code> and bumps the tap automatically.</td><td><span class="status s-cli"><i></i>v0.2</span></td></tr>
+        <tr><td><b>install.sh</b></td><td>Detects OS/arch, downloads the matching release binary, drops it in <code>~/.local/bin</code>. The channel that works on a Linux CI image with no Node and no Homebrew.</td><td><span class="status s-cli"><i></i>v0.2</span></td></tr>
+        <tr><td><b>Standalone binaries</b></td><td><code>bun build --compile</code> (or Node 22 SEA) for <code>darwin-arm64</code>, <code>darwin-x64</code>, <code>linux-x64</code>, <code>linux-arm64</code>, <code>win-x64</code>, attached to each GitHub Release. Removes the Node prerequisite and kills <code>npx</code> cold-start entirely — this is what the tap and the install script both consume.</td><td><span class="status s-cli"><i></i>v0.2</span></td></tr>
+        <tr><td><b>Scoop / WinGet</b></td><td>Same Windows binary, one manifest each. Worth doing only once Windows usage actually shows up — until then <code>npx deplo-cli</code> covers it.</td><td><span class="status s-cli"><i></i>later</span></td></tr>
+        <tr><td><b>homebrew-core</b></td><td>The plain <code>brew install deplo</code> namespace. Requires passing Homebrew's notability bar and a maintainer review, so it is a traction milestone, not a launch task. The tap keeps working either way.</td><td><span class="status s-cli"><i></i>later</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="note"><b>Release pipeline (one workflow, tag-triggered):</b> build → cross-compile the five binaries → GitHub Release → <code>npm publish --provenance</code> → bump the tap formula. Every channel then serves the same version from the same commit, and a release is a git tag rather than a checklist.</div>
+    <div class="note"><b>Public prerequisites on the server side:</b> <code>PUBLIC_URL</code> and the Vercel integration's redirect URL must point at production (the install-url endpoint already 503s without it), the <code>/cli-auth</code> page has to be live on the marketing domain, and the API needs to answer from the public origin — the CLI is not a browser, so CORS is irrelevant, but rate limits and clear <code>4xx</code> bodies now face strangers instead of the dashboard.</div>
   </section>
 
   <section>
@@ -332,16 +438,18 @@
       <pre>
 cli/
 ├── src/
-│   ├── commands/        <span class="d">login · deploy · status · logs · list · env · monitor · open</span>
+│   ├── commands/        <span class="d">login · connect · whoami · deploy · status · logs · list · env · monitor · open</span>
 │   ├── api.ts           <span class="d">typed client for www.deplo.in/api/v1 (same contracts as the dashboard)</span>
 │   ├── auth.ts          <span class="d">token store — ~/.config/deplo/config.json, 0600</span>
+│   ├── handoff.ts       <span class="d">loopback listener for browser login — 127.0.0.1 only, single-use nonce</span>
 │   ├── git.ts           <span class="d">cwd git remote → synced repo match</span>
-│   └── ui.ts            <span class="d">spinners · status glyphs · NO_COLOR support</span>
+│   └── ui.ts            <span class="d">spinners · status glyphs · NO_COLOR + non-TTY fallbacks</span>
+├── install.sh           <span class="d">OS/arch detect → release binary → ~/.local/bin</span>
 └── package.json         <span class="d">name: "deplo-cli" · bin: { "deplo": "dist/index.js" }</span>
       </pre>
     </div>
-    <p>Node 20 + TypeScript, <code>commander</code> for commands, <code>@clack/prompts</code> for the interactive bits, <code>picocolors</code>. Deliberately light so <code>npx</code> cold-start stays fast. Published to npm; Homebrew tap later.</p>
-    <div class="note"><b>Naming (verified on npm):</b> <code>deplo</code> is taken and the <code>@deplo</code> scope is claimed — <code>deplo-cli</code> is free. The installed <em>command</em> is still <code>deplo</code>; docs must always say <code>npx deplo-cli</code>, never <code>npx deplo</code> (that runs a stranger's package).</div>
+    <p>Node 20 + TypeScript, <code>commander</code> for commands, <code>@clack/prompts</code> for the interactive bits, <code>picocolors</code>. Deliberately light so <code>npx</code> cold-start stays fast. The API base URL defaults to production and is overridable with <code>DEPLO_API_URL</code>, so the same published binary works against staging or a local server without a rebuild. Published to npm at v0.1; binaries, the Homebrew tap and <code>install.sh</code> follow in v0.2.</p>
+    <div class="note"><b>Naming (verified on npm):</b> <code>deplo</code> is taken and the <code>@deplo</code> scope is claimed — <code>deplo-cli</code> is free. The installed <em>command</em> is still <code>deplo</code>; docs must always say <code>npx deplo-cli</code>, never <code>npx deplo</code> (that runs a stranger's package). Homebrew has no such collision — taps are namespaced, so the formula is plainly <code>deplo</code>, which is a second reason to ship the tap early.</div>
   </section>
 
   <section>
@@ -349,22 +457,22 @@ cli/
     <ol class="phases">
       <li>
         <span class="pn">v0.1</span>
-        <span class="pd"><b>The core loop</b>login (paste token) · deploy with live log-follow · status · list · logs · open — plus the CliToken server support</span>
-        <span class="pe">~2–3 sessions</span>
+        <span class="pd"><b>Onboard anyone, anywhere</b>browser login + <code>--token</code> fallback · connect vercel/render · whoami · deploy with live log-follow · status · list · logs · open — plus the <code>/cli-auth</code> page, the Settings token UI, and first publish to npm</span>
+        <span class="pe">~3–4 sessions</span>
       </li>
       <li>
         <span class="pn">v0.2</span>
-        <span class="pd"><b>Operate from the terminal</b>env set/ls · monitor · analytics · <code>--json</code> everywhere</span>
-        <span class="pe">~1 session</span>
+        <span class="pd"><b>Operate from the terminal &amp; install anywhere</b>env set/ls · monitor · analytics · <code>--json</code> everywhere — plus cross-compiled binaries, the Homebrew tap and <code>install.sh</code></span>
+        <span class="pe">~2 sessions</span>
       </li>
       <li>
         <span class="pn">v0.3</span>
-        <span class="pd"><b>CI mode &amp; polish</b><code>--wait</code> exit codes with AI diagnosis in CI logs · browser login · Homebrew tap</span>
+        <span class="pd"><b>CI mode &amp; polish</b><code>--wait</code> exit codes with AI diagnosis in CI logs · <code>DEPLO_TOKEN</code> env auth · npm provenance · docs page on the marketing site</span>
         <span class="pe">~1–2 sessions</span>
       </li>
       <li>
         <span class="pn">later</span>
-        <span class="pd"><b>With platform Phase 4</b>true log streaming when the backend ships it · <code>deplo init</code> starter templates · self-update</span>
+        <span class="pd"><b>With platform Phase 4</b>true log streaming when the backend ships it · <code>deplo init</code> starter templates · self-update · Scoop/WinGet · homebrew-core submission once notability allows</span>
         <span class="pe">—</span>
       </li>
     </ol>
@@ -379,6 +487,8 @@ cli/
         <tr><td>Deliver the brand promise</td><td>The deploy output ends exactly like the landing page's terminal strip: URLs with green dots. The film, the site, and the CLI show the same moment.</td></tr>
         <tr><td>Failures teach</td><td>Cause → file → fix → AI prompt, in that order — the terminal version of the failure email.</td></tr>
         <tr><td>Never trap a script</td><td>Every prompt has a flag; <code>--json</code> and meaningful exit codes everywhere; <code>NO_COLOR</code> and dumb-terminal fallbacks respected.</td></tr>
+        <tr><td>No machine is second-class</td><td>Every browser step has a headless twin, and no command assumes the dashboard was ever opened. If a step can't run here, the CLI prints the URL and waits rather than failing.</td></tr>
+        <tr><td>Missing setup is a prompt, not an error</td><td>Not logged in, no Vercel, no Render, repo unsynced — each resolves inline with the next command offered, so a first run never ends in a wall of red.</td></tr>
         <tr><td>Color is state, not decoration</td><td>Green = live, red = failed, cyan = URLs/actions, violet = AI content. Nothing else is colored.</td></tr>
       </tbody>
     </table>

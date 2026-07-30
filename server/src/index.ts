@@ -50,6 +50,8 @@ import { StatsController } from "./interfaces/http/controllers/stats.controller"
 import { WebhooksController } from "./interfaces/http/controllers/webhooks.controller";
 import { IntegrationsController } from "./interfaces/http/controllers/integrations.controller";
 import { MonitoringController } from "./interfaces/http/controllers/monitoring.controller";
+import { CliTokensController } from "./interfaces/http/controllers/cli-tokens.controller";
+import { CliTokenService } from "./application/services/CliTokenService";
 import { createAuthMiddleware } from "./interfaces/http/middleware/auth.middleware";
 import { asyncHandler } from "./shared/utils/asyncHandler";
 
@@ -177,9 +179,10 @@ async function bootstrap(): Promise<void> {
 
   // ── REST API ──────────────────────────────────────────────────────────────
   const api = express.Router();
-  const authMiddleware = createAuthMiddleware(authService);
+  const cliTokenService = new CliTokenService(prisma);
+  const authMiddleware = createAuthMiddleware(authService, cliTokenService);
 
-  const authController = new AuthController(authService);
+  const authController = new AuthController(authService, userRepository);
   const healthController = new HealthController(prisma, cacheRedis);
   const reposController = new ReposController(repositoryService, userRepository, repositoryRepository, analysisService);
   const deploymentsController = new DeploymentsController(
@@ -196,6 +199,7 @@ async function bootstrap(): Promise<void> {
   );
   const integrationsController = new IntegrationsController(integrationService);
   const monitoringController = new MonitoringController(prisma, integrationService);
+  const cliTokensController = new CliTokensController(cliTokenService);
 
   // ── Public routes ─────────────────────────────────────────────────────────
   api.get("/health", asyncHandler(healthController.check));
@@ -235,6 +239,10 @@ async function bootstrap(): Promise<void> {
 
   api.get("/projects/:repoId/monitoring", asyncHandler(monitoringController.monitoring));
   api.get("/projects/:repoId/analytics", asyncHandler(monitoringController.analytics));
+
+  api.post("/cli-tokens", asyncHandler(cliTokensController.create));
+  api.get("/cli-tokens", asyncHandler(cliTokensController.list));
+  api.delete("/cli-tokens/:id", asyncHandler(cliTokensController.revoke));
 
   api.get("/stats", asyncHandler(statsController.get));
 

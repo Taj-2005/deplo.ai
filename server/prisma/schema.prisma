@@ -25,6 +25,7 @@ model User {
 
   @@index([githubId])
   @@index([email])
+  cliTokens CliToken[]
 }
 
 model ProviderConnection {
@@ -72,6 +73,21 @@ model Repository {
 
   @@index([userId])
   @@index([githubRepoId])
+}
+
+// Long-lived, revocable tokens for the deplo CLI. Only the SHA-256 hash is
+// stored — the raw token (dpl_…) is shown once at creation.
+model CliToken {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  tokenHash  String    @unique
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // ── Monitoring ────────────────────────────────────────────────────────────────

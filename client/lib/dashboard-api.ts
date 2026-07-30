@@ -224,6 +224,37 @@ export async function disconnectRender(): Promise<void> {
   await apiFetch("/integrations/render", { method: "DELETE" });
 }
 
+// ─── CLI tokens ───────────────────────────────────────────────────────────────
+
+export interface CliTokenInfo {
+  id: string;
+  name: string;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
+export async function listCliTokens(): Promise<CliTokenInfo[]> {
+  const data = await apiFetch<{ tokens: CliTokenInfo[] }>("/cli-tokens");
+  return data.tokens;
+}
+
+/** Creates a token. The raw `token` value is returned exactly once — show it now or it's gone. */
+export async function createCliToken(name: string): Promise<CliTokenInfo & { token: string }> {
+  return apiFetch<CliTokenInfo & { token: string }>("/cli-tokens", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+}
+
+export async function revokeCliToken(id: string): Promise<void> {
+  const base = getApiBaseUrl();
+  const url = base ? `${base}/api/v1/cli-tokens/${id}` : `/api/v1/cli-tokens/${id}`;
+  const res = await fetch(url, { method: "DELETE", headers: authHeaders() });
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`Failed to revoke token: ${res.status}`);
+  }
+}
+
 // ─── Project monitoring & analytics ───────────────────────────────────────────
 
 export interface UptimePoint {

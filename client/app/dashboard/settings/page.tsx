@@ -1,9 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
-import { CheckCircle2, LogOut, AlertTriangle, ChevronRight } from "lucide-react";
+import { CheckCircle2, LogOut, AlertTriangle, ChevronRight, Terminal, Copy, Check, Trash2 } from "lucide-react";
+import {
+  listCliTokens,
+  createCliToken,
+  revokeCliToken,
+  type CliTokenInfo,
+} from "@/lib/dashboard-api";
 
 // ─── Section ──────────────────────────────────────────────────────────────────
 
@@ -75,6 +81,162 @@ function Toggle({
         }`}
       />
     </button>
+  );
+}
+
+// ─── CLI tokens ───────────────────────────────────────────────────────────────
+
+function relativeDate(iso: string | null): string {
+  if (!iso) return "never";
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function CliTokensSection() {
+  const [tokens, setTokens] = useState<CliTokenInfo[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [name, setName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [newToken, setNewToken] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(() => {
+    listCliTokens()
+      .then(setTokens)
+      .catch(() => setTokens([]))
+      .finally(() => setLoaded(true));
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const onCreate = async () => {
+    if (!name.trim() || creating) return;
+    setCreating(true);
+    setError(null);
+    try {
+      const created = await createCliToken(name.trim());
+      setNewToken(created.token);
+      setName("");
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create token");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const onCopy = async () => {
+    if (!newToken) return;
+    try {
+      await navigator.clipboard.writeText(newToken);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard unavailable — the token is visible for manual selection.
+    }
+  };
+
+  const onRevoke = async (id: string) => {
+    try {
+      await revokeCliToken(id);
+      setTokens((prev) => prev.filter((t) => t.id !== id));
+    } catch {
+      refresh();
+    }
+  };
+
+  return (
+    <Section
+      title="CLI tokens"
+      description="Deploy from your terminal. Install with npm i -g deplo-cli, then run deplo login."
+    >
+      {/* Create */}
+      <div className="px-6 py-4">
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && onCreate()}
+            placeholder="Token name — e.g. MacBook, CI"
+            maxLength={64}
+            className="flex-1 px-3 py-1.5 text-[13px] font-mono bg-ds-surface-low border border-ds-outline-variant text-ds-on-surface placeholder:text-ds-outline focus:outline-none focus:border-ds-primary transition-colors"
+          />
+          <button
+            onClick={onCreate}
+            disabled={!name.trim() || creating}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-mono border border-ds-outline-variant text-ds-on-surface hover:border-ds-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <Terminal size={11} strokeWidth={1.5} />
+            {creating ? "Creating…" : "Create token"}
+          </button>
+        </div>
+        {error && (
+          <p className="mt-2 text-[12px] font-mono text-red-600 dark:text-red-400">{error}</p>
+        )}
+        {newToken && (
+          <div className="mt-3 border border-ds-outline-variant bg-ds-surface-low p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[12px] text-ds-on-variant">
+                Copy this token now — it won&apos;t be shown again.
+              </p>
+              <button
+                onClick={() => setNewToken(null)}
+                className="text-[11px] font-mono text-ds-on-variant hover:text-ds-on-surface transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <code className="flex-1 px-2 py-1.5 text-[12px] font-mono bg-ds-surface border border-ds-outline-variant text-ds-on-surface overflow-x-auto whitespace-nowrap">
+                {newToken}
+              </code>
+              <button
+                onClick={onCopy}
+                aria-label="Copy token"
+                className="p-1.5 border border-ds-outline-variant text-ds-on-variant hover:text-ds-on-surface hover:border-ds-primary transition-colors"
+              >
+                {copied ? <Check size={13} strokeWidth={1.5} /> : <Copy size={13} strokeWidth={1.5} />}
+              </button>
+            </div>
+            <p className="mt-2 text-[11px] font-mono text-ds-on-variant">
+              deplo login --token {newToken.slice(0, 12)}…
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* List */}
+      {loaded && tokens.length === 0 && !newToken && (
+        <div className="px-6 py-4 text-[12px] font-mono text-ds-on-variant">
+          No tokens yet. Create one to use the CLI.
+        </div>
+      )}
+      {tokens.map((t) => (
+        <SettingRow
+          key={t.id}
+          label={t.name}
+          description={`Created ${relativeDate(t.createdAt)} · Last used ${relativeDate(t.lastUsedAt)}`}
+        >
+          <button
+            onClick={() => onRevoke(t.id)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-mono text-ds-on-variant border border-ds-outline-variant hover:border-red-300 hover:text-red-600 dark:hover:border-red-800 dark:hover:text-red-400 transition-colors"
+          >
+            <Trash2 size={11} strokeWidth={1.5} />
+            Revoke
+          </button>
+        </SettingRow>
+      ))}
+    </Section>
   );
 }
 
@@ -159,6 +321,9 @@ export default function SettingsPage() {
             </button>
           </SettingRow>
         </Section>
+
+        {/* CLI tokens */}
+        <CliTokensSection />
 
         {/* Notifications */}
         <Section title="Notifications" description="Configure deployment alerts.">
