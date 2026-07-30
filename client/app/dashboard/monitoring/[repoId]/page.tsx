@@ -16,6 +16,9 @@ import {
 // Series palette — validated (dataviz six checks) for BOTH light & dark surfaces.
 const SERIES = { a: "#0891B2", b: "#7C3AED" } as const;
 
+// Line-chart padding — module constant so hooks don't depend on a fresh object.
+const PAD = { l: 44, r: 76, t: 10, b: 20 } as const;
+
 // ─── Tiny chart primitives (SVG, no deps) ─────────────────────────────────────
 
 interface TipState {
@@ -74,10 +77,9 @@ function LineChart({
 
   const all = series.flatMap((s) => s.points.filter((p) => p.y !== null));
   const ts = series.flatMap((s) => s.points.map((p) => p.t));
-  const tMin = Math.min(...ts, Date.now() - 1);
-  const tMax = Math.max(...ts, Date.now());
+  const tMin = ts.length ? Math.min(...ts) : 0;
+  const tMax = ts.length ? Math.max(...ts) : 1;
   const yMax = Math.max(...all.map((p) => p.y as number), 1) * 1.15;
-  const PAD = { l: 44, r: 76, t: 10, b: 20 };
   const W = Math.max(width, 280);
   const H = height;
   const x = (t: number) => PAD.l + ((t - tMin) / Math.max(tMax - tMin, 1)) * (W - PAD.l - PAD.r);
