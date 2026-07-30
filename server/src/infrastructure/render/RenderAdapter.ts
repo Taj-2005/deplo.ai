@@ -188,8 +188,10 @@ export class RenderAdapter {
   }
 
   async triggerDeploy(serviceId: string): Promise<RenderDeploy> {
+    // clearCache is a string enum ("clear" | "do_not_clear") — a boolean gets
+    // rejected with 400 "invalid JSON" (verified live).
     return this.request<RenderDeploy>("POST", `/services/${serviceId}/deploys`, {
-      clearCache: false,
+      clearCache: "do_not_clear",
     });
   }
 
