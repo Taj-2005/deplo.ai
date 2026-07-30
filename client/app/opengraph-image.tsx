@@ -34,7 +34,6 @@ export default async function OgImage() {
       >
         {/* Top — wordmark */}
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- Satori requires <img> */}
           <img
             src={logo as unknown as string}
             width={48}
