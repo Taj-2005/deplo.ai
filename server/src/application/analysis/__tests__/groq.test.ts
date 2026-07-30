@@ -167,12 +167,15 @@ describe("GroqReasoningService merge", () => {
   it("returns a structured failure diagnosis", async () => {
     const diagnosis: AiFailureDiagnosis = {
       likelyCause: "Build command wrong",
+      affectedFile: "package.json",
       frameworkMisidentified: false,
       correctedFramework: null,
       correctedBuildCommand: "pnpm build",
       correctedStartCommand: null,
       correctedOutputDirectory: null,
       recommendation: "Use pnpm because pnpm-lock.yaml is present.",
+      aiFixPrompt: "In package.json, change the build script to use pnpm.",
+      issues: [],
       confidence: 0.7,
     };
     const llm: ILlmClient = { completeJson: jest.fn().mockResolvedValue(diagnosis) };

@@ -203,15 +203,29 @@ export interface AiRepoReasoning {
   summary: string;
 }
 
+/** A prioritised problem surfaced by the failure diagnosis. */
+export interface DiagnosisIssue {
+  severity: "critical" | "high" | "medium" | "low";
+  category: "security" | "dependency" | "configuration" | "build" | "runtime";
+  title: string;
+  detail: string;
+}
+
 /** AI attempt #2 — error-driven diagnosis after a failed deployment. */
 export interface AiFailureDiagnosis {
   likelyCause: string;
+  /** Repo file most likely responsible (e.g. "server/package.json"), if identifiable. */
+  affectedFile: string | null;
   frameworkMisidentified: boolean;
   correctedFramework: string | null;
   correctedBuildCommand: string | null;
   correctedStartCommand: string | null;
   correctedOutputDirectory: string | null;
   recommendation: string;
+  /** Ready-to-paste prompt for the user's AI coding tool (Cursor/Claude/Copilot). */
+  aiFixPrompt: string;
+  /** Additional problems worth fixing, ordered by severity in consumers. */
+  issues: DiagnosisIssue[];
   confidence: number;
 }
 

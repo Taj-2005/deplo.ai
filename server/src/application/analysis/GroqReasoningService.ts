@@ -154,18 +154,34 @@ const FAILURE_DIAGNOSIS_SCHEMA = {
   type: "object",
   properties: {
     likelyCause: { type: "string" },
+    affectedFile: { type: ["string", "null"] },
     frameworkMisidentified: { type: "boolean" },
     correctedFramework: { type: ["string", "null"], enum: [...FRAMEWORK_ENUM, null] },
     correctedBuildCommand: { type: ["string", "null"] },
     correctedStartCommand: { type: ["string", "null"] },
     correctedOutputDirectory: { type: ["string", "null"] },
     recommendation: { type: "string" },
+    aiFixPrompt: { type: "string" },
+    issues: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          severity: { type: "string", enum: ["critical", "high", "medium", "low"] },
+          category: { type: "string", enum: ["security", "dependency", "configuration", "build", "runtime"] },
+          title: { type: "string" },
+          detail: { type: "string" },
+        },
+        required: ["severity", "category", "title", "detail"],
+        additionalProperties: false,
+      },
+    },
     confidence: { type: "number" },
   },
   required: [
-    "likelyCause", "frameworkMisidentified", "correctedFramework",
+    "likelyCause", "affectedFile", "frameworkMisidentified", "correctedFramework",
     "correctedBuildCommand", "correctedStartCommand", "correctedOutputDirectory",
-    "recommendation", "confidence",
+    "recommendation", "aiFixPrompt", "issues", "confidence",
   ],
   additionalProperties: false,
 };
@@ -247,10 +263,19 @@ export class GroqReasoningService {
         schemaName: "failure_diagnosis",
         schema: FAILURE_DIAGNOSIS_SCHEMA,
         system:
-          "You are a deployment failure analyst. Given the detected stack, the deployment " +
-          "logs, and the error, determine what went wrong and how the deployment " +
-          "configuration should change. If the framework was misidentified, say so and " +
-          "name the correct one. Use null for corrections you are not confident about.",
+          "You are a deployment failure analyst writing for the developer who owns the " +
+          "repository. Given the detected stack, the deployment logs, and the error, " +
+          "determine what went wrong and how to fix it. Name the specific repo file most " +
+          "likely responsible in affectedFile (null if the failure is platform-side, not " +
+          "the repo's fault). Write recommendation as clear plain-language steps. Write " +
+          "aiFixPrompt as a complete, self-contained prompt the developer can paste into " +
+          "their AI coding tool (Cursor, Claude Code, Copilot) to fix the repo — include " +
+          "the file to change, the exact change needed, and the error being fixed. In " +
+          "issues, list any additional problems you can see in the logs worth fixing — " +
+          "security vulnerabilities and dependency problems first, then configuration and " +
+          "build concerns; keep it empty rather than inventing problems. If the framework " +
+          "was misidentified, say so and name the correct one. Use null for corrections " +
+          "you are not confident about.",
         user:
           `## Detected stack\n${params.stackSummary}\n\n` +
           `## Components\n${componentSummary}\n\n` +

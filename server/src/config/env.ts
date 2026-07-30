@@ -39,6 +39,17 @@ const envSchema = z.object({
   // Production model with strict JSON-schema structured outputs.
   GROQ_MODEL: z.string().default("openai/gpt-oss-120b"),
 
+  // ── Deployment notification emails (optional — feature off until set) ─────
+  SMTP_HOST: z.string().min(1).optional(),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+  SMTP_SECURE: z
+    .string()
+    .optional()
+    .transform((v) => v === "true"),
+  SMTP_USER: z.string().min(1).optional(),
+  SMTP_PASS: z.string().min(1).optional(),
+  MAIL_FROM: z.string().default("deplo.ai <no-reply@deplo.in>"),
+
   ENCRYPTION_KEY: z.string().min(64),
 
   ALLOWED_ORIGINS: z

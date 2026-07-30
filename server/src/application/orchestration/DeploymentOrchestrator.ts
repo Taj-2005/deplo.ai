@@ -3,6 +3,8 @@ import type { IRepositoryRepository } from "../../domain/repository/Repository";
 import type { IUserRepository } from "../../domain/user/UserRepository.interface";
 import type { AnalysisService } from "../services/AnalysisService";
 import type { GroqReasoningService } from "../analysis/GroqReasoningService";
+import type { DeploymentEmailService } from "../notifications/DeploymentEmailService";
+import type { AiFailureDiagnosis } from "../../domain/analysis/types";
 import type { IntegrationService } from "../services/IntegrationService";
 import { VercelAdapter, type VercelFramework } from "../../infrastructure/vercel/VercelAdapter";
 import { RenderAdapter, type RenderRuntime } from "../../infrastructure/render/RenderAdapter";
@@ -76,7 +78,31 @@ export class DeploymentOrchestrator {
     private readonly github: GitHubAdapter,
     /** Optional Layer 3 AI — diagnoses failed deployments (one call max). */
     private readonly reasoning: GroqReasoningService | null = null,
+    /** Optional lifecycle emails — best-effort, never affects a deployment. */
+    private readonly emails: DeploymentEmailService | null = null,
   ) {}
+
+  /** Resolve the pieces every notification needs (null when unavailable). */
+  private async mailRef(deploymentId: string): Promise<{
+    deploymentId: string;
+    repoFullName: string;
+    branch: string;
+    userEmail: string;
+  } | null> {
+    const deployment = await this.deploymentRepository.findById(deploymentId).catch(() => null);
+    if (!deployment) return null;
+    const [repository, user] = await Promise.all([
+      this.repositoryRepository.findById(deployment.repositoryId).catch(() => null),
+      this.userRepository.findById(deployment.userId).catch(() => null),
+    ]);
+    if (!repository || !user) return null;
+    return {
+      deploymentId,
+      repoFullName: repository.fullName,
+      branch: deployment.branch,
+      userEmail: user.email,
+    };
+  }
 
   // ── Phase 1: analyze ──────────────────────────────────────────────────────
 
@@ -134,6 +160,13 @@ export class DeploymentOrchestrator {
           deploymentId,
           `Waiting for ${unsatisfied.length} required environment variable(s): ${unsatisfied.map((v) => v.key).join(", ")}.`,
         );
+        // Nudge the user by email — the deployment is parked until they act.
+        if (this.emails) {
+          await this.emails.sendAwaitingEnv(
+            { deploymentId, repoFullName: repository.fullName, branch: deployment.branch, userEmail: user.email },
+            unsatisfied.map((v) => v.key),
+          );
+        }
       }
 
       return { needsEnv };
@@ -487,6 +520,16 @@ export class DeploymentOrchestrator {
       await this.deploymentRepository.appendLog(deploymentId, "Deployment completed successfully.");
       logger.info("Deployment completed", { deploymentId });
 
+      // Success email with the live production URLs (best-effort).
+      if (this.emails) {
+        const final = await this.deploymentRepository.findById(deploymentId).catch(() => null);
+        await this.emails.sendSuccess(
+          { deploymentId, repoFullName: repository.fullName, branch, userEmail: user.email },
+          final?.frontendUrl ?? null,
+          final?.backendUrl ?? null,
+        );
+      }
+
       // Register GitHub CI/CD webhook (best-effort — never fails the deployment)
       await this.maybeRegisterWebhook(deploymentId, repository.fullName, githubToken);
     } catch (err) {
@@ -629,15 +672,24 @@ export class DeploymentOrchestrator {
 
     // Layer 3, attempt #2 — one bounded AI diagnosis of the failure. Runs once
     // per deployment (failDeployment is terminal) and never throws.
-    await this.diagnoseFailure(deploymentId, message).catch(() => undefined);
+    const diagnosis = await this.diagnoseFailure(deploymentId, message).catch(() => null);
+
+    // Notify the user by email with the full explanation + fix guidance.
+    if (this.emails) {
+      const ref = await this.mailRef(deploymentId);
+      if (ref) await this.emails.sendFailure(ref, message, diagnosis);
+    }
   }
 
   /** Best-effort AI failure diagnosis appended to the deployment logs. */
-  private async diagnoseFailure(deploymentId: string, errorMessage: string): Promise<void> {
-    if (!this.reasoning) return;
+  private async diagnoseFailure(
+    deploymentId: string,
+    errorMessage: string,
+  ): Promise<AiFailureDiagnosis | null> {
+    if (!this.reasoning) return null;
 
     const deployment = await this.deploymentRepository.findById(deploymentId);
-    if (!deployment) return;
+    if (!deployment) return null;
 
     const s = deployment.detectedStack;
     const stackSummary = s
@@ -652,7 +704,7 @@ export class DeploymentOrchestrator {
       analysis: null,
       stackSummary,
     });
-    if (!diagnosis) return;
+    if (!diagnosis) return null;
 
     const lines = [
       `AI diagnosis: ${diagnosis.likelyCause}`,
@@ -668,6 +720,8 @@ export class DeploymentOrchestrator {
     for (const line of lines) {
       await this.deploymentRepository.appendLog(deploymentId, line).catch(() => undefined);
     }
+
+    return diagnosis;
   }
 
   private serviceSlug(repoName: string, suffix: "api" | "web"): string {

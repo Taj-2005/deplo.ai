@@ -37,6 +37,8 @@ import { DeploymentService } from "./application/services/DeploymentService";
 import { RepositoryService } from "./application/services/RepositoryService";
 import { IntegrationService } from "./application/services/IntegrationService";
 import { DeploymentOrchestrator } from "./application/orchestration/DeploymentOrchestrator";
+import { DeploymentEmailService } from "./application/notifications/DeploymentEmailService";
+import { SmtpMailer } from "./infrastructure/email/SmtpMailer";
 
 // ── HTTP Controllers ──────────────────────────────────────────────────────────
 import { AuthController } from "./interfaces/http/controllers/auth.controller";
@@ -89,6 +91,11 @@ async function bootstrap(): Promise<void> {
 
   const analysisService = new AnalysisService(github, reasoning);
 
+  // Deployment lifecycle emails (soft-off until SMTP env vars are set).
+  const mailer = new SmtpMailer();
+  const emailService = new DeploymentEmailService(mailer);
+  logger.info(mailer.isConfigured() ? "Deployment emails enabled" : "Deployment emails disabled (SMTP not configured)");
+
   const integrationService = new IntegrationService(providerConnectionRepository, {
     vercelClientId: env.VERCEL_CLIENT_ID,
     vercelClientSecret: env.VERCEL_CLIENT_SECRET,
@@ -116,6 +123,7 @@ async function bootstrap(): Promise<void> {
     integrationService,
     github,
     reasoning,
+    emailService,
   );
 
   const worker = createDeploymentWorker(workerRedis, orchestrator);
