@@ -1,0 +1,65 @@
+name: Release CLI
+
+# Publishes @deplo.ai/cli to npm.
+#
+# Trigger: push a tag like `cli-v0.1.1` (must match cli/package.json version),
+# or run manually from the Actions tab (publishes whatever version is on the
+# selected ref — the guard still requires a matching `cli-v*` tag on a manual
+# run against a tag ref, so prefer tags).
+#
+# Release flow:
+#   1. bump "version" in cli/package.json  →  commit to main
+#   2. git tag cli-v<version> && git push origin cli-v<version>
+#
+# Requires the NPM_TOKEN repository secret (granular npm token with
+# read/write on the @deplo.ai scope and 2FA bypass — see docs in PR).
+# NOTE: `npm publish --provenance` needs a public repo; add the flag and
+# `id-token: write` once this repository goes public.
+
+on:
+  push:
+    tags: ["cli-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish @deplo.ai/cli to npm
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+          # Writes an .npmrc that reads the token from NODE_AUTH_TOKEN.
+          registry-url: https://registry.npmjs.org
+
+      - name: Verify tag matches package.json version
+        if: startsWith(github.ref, 'refs/tags/cli-v')
+        run: |
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          TAG_VERSION="${GITHUB_REF_NAME#cli-v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Tag cli-v$TAG_VERSION does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+
+      - name: Smoke test the built binary
+        run: node dist/index.js --help
+
+      - name: Publish
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
