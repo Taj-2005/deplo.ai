@@ -1,10 +1,15 @@
 import type { Request, Response, NextFunction } from "express";
 import type { AuthService } from "../../../application/services/AuthService";
+import type { IUserRepository } from "../../../domain/user/UserRepository.interface";
+import { AppError } from "../../../shared/errors/AppError";
 import { env } from "../../../config/env";
 import { logger } from "../../../shared/logger/logger";
 
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly userRepository: IUserRepository,
+  ) {}
 
   getGithubOAuthUrl = (_req: Request, res: Response): void => {
     const params = new URLSearchParams({
@@ -48,9 +53,19 @@ export class AuthController {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      const token = (req.headers.authorization ?? "").slice(7);
-      const payload = this.authService.verifyToken(token);
-      res.json({ userId: payload.sub, email: payload.email });
+      // req.userId is set by the auth middleware for BOTH JWTs and CLI
+      // tokens (dpl_…) — never re-verify the bearer as a JWT here.
+      const user = await this.userRepository.findById(req.userId!);
+      if (!user) {
+        throw AppError.unauthorized();
+      }
+      res.json({
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        githubLogin: user.githubLogin,
+        avatarUrl: user.avatarUrl,
+      });
     } catch (err) {
       next(err);
     }
