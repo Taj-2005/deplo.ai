@@ -1,23 +1,23 @@
-# deplo-cli
+# @deplo.ai/cli
 
 Deploy full-stack apps into **your own** Vercel + Render accounts from the terminal.
 Code goes in. Production URL comes out.
 
 ```bash
-npx deplo-cli login    # sign in with GitHub in the browser
+npx @deplo.ai/cli login    # sign in with GitHub in the browser
 cd your-project
-npx deplo-cli          # detect the stack, deploy, follow the live log
+npx @deplo.ai/cli          # detect the stack, deploy, follow the live log
 ```
 
 Or install globally and just use `deplo`:
 
 ```bash
-npm i -g deplo-cli
+npm i -g @deplo.ai/cli
 deplo login
 deplo
 ```
 
-> Always `npx deplo-cli` — the bare `deplo` package on npm is not us.
+> Always `npx @deplo.ai/cli` — the bare `deplo` package on npm is not us.
 
 ## Commands
 

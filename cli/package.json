@@ -1,6 +1,9 @@
 {
-  "name": "deplo-cli",
+  "name": "@deplo.ai/cli",
   "version": "0.1.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "Deploy full-stack apps into your own Vercel + Render accounts from the terminal. Code goes in. Production URL comes out.",
   "license": "MIT",
   "homepage": "https://www.deplo.in",
