@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { ALL_DOC_PAGES } from "@/lib/docs/navigation";
+import { BLOG_POSTS } from "@/lib/blog/posts";
 
 const BASE = "https://www.deplo.in";
 
@@ -13,6 +14,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: page.href === "/docs" ? 0.9 : 0.7,
   }));
 
+  const blog: MetadataRoute.Sitemap = [
+    { url: `${BASE}/blog`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
+    ...BLOG_POSTS.map((post) => ({
+      url: `${BASE}/blog/${post.slug}`,
+      lastModified: new Date(`${post.date}T00:00:00Z`),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
+  ];
+
+  const legal: MetadataRoute.Sitemap = ["/privacy", "/terms", "/security"].map((path) => ({
+    url: `${BASE}${path}`,
+    lastModified: new Date(),
+    changeFrequency: "monthly",
+    priority: 0.4,
+  }));
+
   return [
     {
       url: BASE,
@@ -21,10 +39,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1.0,
     },
     ...docs,
+    ...blog,
+    ...legal,
   ];
 }
 
 // When new routes go live, add them here:
-// { url: `${BASE}/blog`,        changeFrequency: "weekly",  priority: 0.8 },
 // { url: `${BASE}/changelog`,   changeFrequency: "weekly",  priority: 0.7 },
 // { url: `${BASE}/pricing`,     changeFrequency: "monthly", priority: 0.6 },

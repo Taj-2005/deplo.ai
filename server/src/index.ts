@@ -209,6 +209,9 @@ async function bootstrap(): Promise<void> {
   // Vercel OAuth callback — public (user identified via signed JWT state param)
   api.get("/integrations/vercel/callback", asyncHandler(integrationsController.vercelCallback));
 
+  // Landing-page platform stats — public, cached, no auth.
+  api.get("/public/stats", asyncHandler(statsController.publicStats));
+
   // Webhooks — no user auth (signature validation inside controllers)
   api.get("/public/insights.js", monitoringController.script);
   api.get("/public/insights/:repoId", asyncHandler(monitoringController.ingest));

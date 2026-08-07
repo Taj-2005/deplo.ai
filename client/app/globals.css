@@ -259,3 +259,72 @@ body {
   color: var(--ds-on-surface);
   border-left-color: var(--accent-cyan) !important;
 }
+
+/* ── Marketing prose pages (legal, blog) — light-theme landing style ──────── */
+.prose-page { color: #334155; }
+.prose-page h2 {
+  color: #000;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-size: 1.25rem;
+  margin: 2.25rem 0 0.75rem;
+}
+.prose-page h3 {
+  color: #000;
+  font-weight: 600;
+  font-size: 1rem;
+  margin: 1.75rem 0 0.5rem;
+}
+.prose-page p {
+  font-size: 0.9375rem;
+  line-height: 1.75;
+  margin: 0.875rem 0;
+}
+.prose-page ul {
+  margin: 0.875rem 0;
+  padding-left: 1.25rem;
+  list-style: none;
+}
+.prose-page ul li {
+  position: relative;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  margin: 0.4rem 0;
+}
+.prose-page ul li::before {
+  content: "";
+  position: absolute;
+  left: -1.1rem;
+  top: 0.78em;
+  width: 0.6rem;
+  height: 1px;
+  background: #94a3b8;
+}
+.prose-page strong { color: #000; font-weight: 600; }
+.prose-page a {
+  color: #000;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: #cbd5e1;
+  transition: text-decoration-color 0.15s;
+}
+.prose-page a:hover { text-decoration-color: #00d2ff; }
+.prose-page code {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.8125rem;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 0.1rem 0.35rem;
+}
+.prose-page pre {
+  background: #0d1117;
+  color: #e6e6e6;
+  border: 1px solid #1f2937;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  font-size: 0.8125rem;
+  line-height: 1.7;
+  margin: 1.25rem 0;
+}
+.prose-page pre code { background: none; border: 0; padding: 0; font-size: inherit; }
+.prose-page hr { border: 0; border-top: 1px solid #e2e8f0; margin: 2.5rem 0; }
