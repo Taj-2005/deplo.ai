@@ -10,35 +10,33 @@ const footerLinks = [
       { label: "Features", href: "#features" },
       { label: "How it works", href: "#how-it-works" },
       { label: "Integrations", href: "#integrations" },
-      { label: "Pricing", href: "#pricing" },
     ],
   },
   {
     group: "Developers",
     links: [
-      { label: "Documentation", href: "#" },
+      { label: "Documentation", href: "/docs" },
       { label: "GitHub", href: "https://github.com/deplolabs" },
-      { label: "API Reference", href: "#" },
-      { label: "Changelog", href: "#" },
+      { label: "API Reference", href: "/docs/api" },
+      { label: "CLI", href: "/docs/cli" },
     ],
   },
   {
     group: "Company",
     links: [
       { label: "About", href: "#" },
-      { label: "Blog", href: "#" },
+      { label: "Blog", href: "/blog" },
       { label: "LinkedIn", href: "https://www.linkedin.com/company/deplo-ai" },
       { label: "GitHub", href: "https://github.com/deplolabs" },
-      { label: "Twitter", href: "#" },
       { label: "Contact", href: "mailto:deploai201@gmail.com" },
     ],
   },
   {
     group: "Legal",
     links: [
-      { label: "Privacy", href: "#" },
-      { label: "Terms", href: "#" },
-      { label: "Security", href: "#" },
+      { label: "Privacy", href: "/privacy" },
+      { label: "Terms", href: "/terms" },
+      { label: "Security", href: "/security" },
     ],
   },
 ];

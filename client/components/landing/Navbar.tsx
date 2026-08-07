@@ -13,7 +13,9 @@ const navLinks = [
   { href: "#features", label: "Features" },
   { href: "#how-it-works", label: "How it works" },
   { href: "#integrations", label: "Integrations" },
-  { href: "#pricing", label: "Pricing" },
+  // Pricing hidden while the platform is free — re-enable when plans exist.
+  // { href: "#pricing", label: "Pricing" },
+  { href: "/docs", label: "Docs" },
 ];
 
 export function Navbar() {

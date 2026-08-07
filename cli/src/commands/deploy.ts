@@ -5,6 +5,7 @@ import { currentBranch, currentRepoFullName } from "../git";
 import * as ui from "../ui";
 import { login } from "./login";
 import { connectRender, connectVercel } from "./connect";
+import { celebrateDeployed } from "../celebrate";
 
 const POLL_MS = 2_500;
 
@@ -120,6 +121,7 @@ export async function followDeployment(deploymentId: string): Promise<void> {
 
     if (d.status === "COMPLETED") {
       console.log();
+      await celebrateDeployed();
       if (d.backendUrl) ui.ok(`backend live   ${ui.url(d.backendUrl)}`);
       if (d.frontendUrl) ui.ok(`frontend live  ${ui.url(d.frontendUrl)}`);
       const elapsed = d.duration ? d.duration * 1000 : Date.now() - startedAt;

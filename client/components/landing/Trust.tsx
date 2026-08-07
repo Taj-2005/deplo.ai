@@ -46,33 +46,73 @@ function AnimatedCounter({
   );
 }
 
-const stats = [
-  {
-    value: 2400,
-    suffix: "+",
-    label: "Deployments orchestrated",
-    icon: Zap,
-  },
-  {
-    value: 100,
-    suffix: "%",
-    prefix: "",
-    label: "Zero infrastructure owned",
-    icon: ShieldCheck,
-  },
-  {
-    value: 4,
-    suffix: "",
-    prefix: "<",
-    label: "Minutes to production, avg",
-    icon: Code2,
-  },
-];
-
+interface LiveStats {
+  deployments: number;
+  avgMinutesToProduction: number | null;
+}
 
 export function Trust() {
   const statsRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(statsRef, { once: true, margin: "-80px" });
+
+  // Live platform numbers from the public API. The backend runs on Render and
+  // may be cold-starting, so retry with backoff until it answers — the stats
+  // fill in the moment the server is live. Placeholders render meanwhile; the
+  // landing page itself never depends on the API.
+  const [live, setLive] = useState<LiveStats | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const attempt = (n: number) => {
+      fetch("/api/v1/public/stats")
+        .then((res) => (res.ok ? (res.json() as Promise<LiveStats>) : Promise.reject(new Error(String(res.status)))))
+        .then((data) => {
+          if (!cancelled && data && typeof data.deployments === "number") setLive(data);
+        })
+        .catch(() => {
+          // Back off 2s → 4s → 8s → 15s (cap), ~12 tries ≈ 2.5 min — enough
+          // to outlast a Render free-tier wake-up.
+          if (!cancelled && n < 12) {
+            timer = setTimeout(() => attempt(n + 1), Math.min(2000 * 2 ** n, 15_000));
+          }
+        });
+    };
+    attempt(0);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, []);
+
+  // value: null → data not loaded (or unavailable) → renders as "—", never a
+  // made-up number.
+  const stats: Array<{
+    value: number | null;
+    suffix?: string;
+    prefix?: string;
+    label: string;
+    icon: typeof Zap;
+  }> = [
+    {
+      value: live?.deployments ?? null,
+      label: "Deployments orchestrated",
+      icon: Zap,
+    },
+    {
+      value: 100,
+      suffix: "%",
+      label: "Zero infrastructure owned",
+      icon: ShieldCheck,
+    },
+    {
+      value: live?.avgMinutesToProduction ?? null,
+      prefix: "<",
+      label: "Minutes to production, avg",
+      icon: Code2,
+    },
+  ];
 
   return (
     <section className="bg-white py-24 sm:py-32 border-t border-[#E2E8F0]">
@@ -104,7 +144,7 @@ export function Trust() {
           ref={statsRef}
           className="grid grid-cols-1 sm:grid-cols-3 gap-0 border border-[#E2E8F0]"
         >
-          {stats.map(({ value, suffix, prefix = "", label, icon: Icon }, i) => (
+          {stats.map(({ value, suffix = "", prefix = "", label, icon: Icon }, i) => (
             <motion.div
               key={label}
               initial={{ opacity: 0, y: 12 }}
@@ -120,12 +160,14 @@ export function Trust() {
                 className="text-black font-semibold tracking-[-0.04em]"
                 style={{ fontSize: "clamp(2rem, 4vw, 3rem)" }}
               >
-                {prefix}
-                <AnimatedCounter
-                  value={value}
-                  suffix={suffix}
-                  isInView={isInView}
-                />
+                {value === null ? (
+                  <span className="text-[#CBD5E1]">—</span>
+                ) : (
+                  <>
+                    {prefix}
+                    <AnimatedCounter value={value} suffix={suffix} isInView={isInView} />
+                  </>
+                )}
               </span>
               <span className="text-[13px] text-[#64748B]">{label}</span>
             </motion.div>
