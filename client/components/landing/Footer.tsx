@@ -16,10 +16,10 @@ const footerLinks = [
   {
     group: "Developers",
     links: [
-      { label: "Documentation", href: "#" },
+      { label: "Documentation", href: "/docs" },
       { label: "GitHub", href: "https://github.com/deplolabs" },
-      { label: "API Reference", href: "#" },
-      { label: "Changelog", href: "#" },
+      { label: "API Reference", href: "/docs/api" },
+      { label: "CLI", href: "/docs/cli" },
     ],
   },
   {

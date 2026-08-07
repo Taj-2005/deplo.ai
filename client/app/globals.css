@@ -203,3 +203,59 @@ body {
   background: linear-gradient(90deg, transparent 0%, rgba(0,210,255,0.07) 50%, transparent 100%);
   animation: pv-env-sweep 3s ease-in-out infinite 2s;
 }
+
+/* ── Docs portal ────────────────────────────────────────────────────────────
+   Syntax token colors — the two chart hues (cyan/violet) validated for both
+   themes, plus design-system inks. Consumed by lib/docs/highlight.tsx. */
+:root {
+  --doc-tok-cmt:    #7e7576;
+  --doc-tok-str:    #0891b2;
+  --doc-tok-kw:     #7c3aed;
+  --doc-tok-num:    #0891b2;
+  --doc-tok-fn:     #171c1f;
+  --doc-tok-prompt: #0891b2;
+  --doc-tok-flag:   #4c4546;
+  --doc-tok-url:    #0891b2;
+  --doc-code-bg:    #0d1117;
+}
+
+.dark {
+  --doc-tok-cmt:    #6b6b6b;
+  --doc-tok-str:    #22d3ee;
+  --doc-tok-kw:     #a78bfa;
+  --doc-tok-num:    #22d3ee;
+  --doc-tok-fn:     #ededed;
+  --doc-tok-flag:   #9ba1a6;
+  --doc-tok-prompt: #22d3ee;
+  --doc-tok-url:    #22d3ee;
+  --doc-code-bg:    #0d0d0d;
+}
+
+/* Code blocks render on a dark surface in BOTH themes (terminal-first brand),
+   so token colors inside .doc-codeblock always use the dark-theme values. */
+.doc-codeblock {
+  --doc-tok-cmt:    #6b6b6b;
+  --doc-tok-str:    #22d3ee;
+  --doc-tok-kw:     #a78bfa;
+  --doc-tok-num:    #22d3ee;
+  --doc-tok-fn:     #e6e6e6;
+  --doc-tok-flag:   #9ba1a6;
+  --doc-tok-prompt: #34d399;
+  --doc-tok-url:    #22d3ee;
+}
+
+.doc-tok-cmt    { color: var(--doc-tok-cmt); font-style: italic; }
+.doc-tok-str    { color: var(--doc-tok-str); }
+.doc-tok-kw     { color: var(--doc-tok-kw); }
+.doc-tok-num    { color: var(--doc-tok-num); }
+.doc-tok-fn     { color: var(--doc-tok-fn); }
+.doc-tok-prompt { color: var(--doc-tok-prompt); font-weight: 600; }
+.doc-tok-flag   { color: var(--doc-tok-flag); }
+.doc-tok-url    { color: var(--doc-tok-url); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: rgba(34, 211, 238, 0.35); }
+.doc-tok-plain  { color: inherit; }
+
+/* Active ToC entry */
+.doc-toc-active {
+  color: var(--ds-on-surface);
+  border-left-color: var(--accent-cyan) !important;
+}

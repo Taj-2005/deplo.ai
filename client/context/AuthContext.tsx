@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useState,
+  useEffect,
   useCallback,
 } from "react";
 import {
@@ -41,8 +42,20 @@ function readUserFromStorage(): AuthUser | null {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(readUserFromStorage);
-  const [isLoading] = useState(false);
+  // Start null on BOTH server and client so hydration matches (SSR can't see
+  // localStorage); the real auth state loads right after mount.
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Deferred a tick: reading localStorage synchronously in the effect body
+    // would trip react-hooks/set-state-in-effect and still block paint.
+    const t = setTimeout(() => {
+      setUser(readUserFromStorage());
+      setIsLoading(false);
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
 
   const signIn = useCallback(() => {
     window.location.href = getGithubAuthUrl();

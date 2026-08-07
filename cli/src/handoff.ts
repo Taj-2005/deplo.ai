@@ -15,13 +15,47 @@ import { resolveWebUrl } from "./config";
 
 const TIMEOUT_MS = 5 * 60_000;
 
-const DONE_PAGE = `<!doctype html><meta charset="utf-8"><title>deplo — signed in</title>
-<body style="margin:0;display:grid;place-items:center;min-height:100vh;background:#0a0a0a;color:#e6e6e6;font-family:ui-monospace,monospace">
-<div style="text-align:center">
-<div style="font-size:40px;color:#34d399">&#10003;</div>
-<p style="font-size:15px">Signed in — return to your terminal.</p>
-<p style="font-size:12px;color:#9ba1a6">You can close this tab.</p>
-</div></body>`;
+// Success page shown in the browser after the hand-off lands. The icon is
+// lucide's circle-check-big, stroke-animated, with a confetti burst — all
+// inline, no external requests, honors prefers-reduced-motion.
+const DONE_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>deplo — signed in</title>
+<style>
+  body{margin:0;display:grid;place-items:center;min-height:100vh;background:#0a0a0a;color:#e6e6e6;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;overflow:hidden}
+  .wrap{text-align:center;animation:rise .5s ease both}
+  svg{width:88px;height:88px;stroke:#34d399;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .ring{stroke-dasharray:64;stroke-dashoffset:64;animation:draw .55s ease-out forwards}
+  .check{stroke-dasharray:22;stroke-dashoffset:22;animation:draw .4s ease-out .45s forwards}
+  p{font-size:15px;margin:14px 0 0}
+  .dim{font-size:12px;color:#9ba1a6;margin-top:6px}
+  .c{position:fixed;top:-14px;width:7px;height:11px;opacity:.9;animation:fall linear forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  @keyframes fall{to{transform:translateY(105vh) rotate(720deg);opacity:.6}}
+  @media (prefers-reduced-motion:reduce){.ring,.check{animation:none;stroke-dashoffset:0}.wrap{animation:none}.c{display:none}}
+</style></head>
+<body>
+<div class="wrap">
+<svg viewBox="0 0 24 24" aria-hidden="true"><path class="ring" d="M21.801 10A10 10 0 1 1 17 3.335"/><path class="check" d="m9 11 3 3L22 4"/></svg>
+<p>Signed in &mdash; return to your terminal.</p>
+<p class="dim">You can close this tab.</p>
+</div>
+<script>
+(function(){
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  var colors=["#00d2ff","#7928ca","#34d399","#fbbf24"];
+  for (var i=0;i<70;i++){
+    var d=document.createElement("div");
+    d.className="c";
+    d.style.left=(Math.random()*100)+"vw";
+    d.style.background=colors[i%colors.length];
+    d.style.transform="rotate("+(Math.random()*360)+"deg)";
+    d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+    d.style.animationDelay=(.5+Math.random()*.6)+"s";
+    document.body.appendChild(d);
+  }
+})();
+</script>
+</body></html>`;
 
 export interface HandoffResult {
   token: string;

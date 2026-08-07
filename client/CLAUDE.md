@@ -47,7 +47,7 @@ deplo-ai/
 | Database | PostgreSQL 16 via Prisma ORM |
 | Cache | Redis 7 (ioredis) |
 | Auth | GitHub OAuth → JWT |
-| Docs | Swagger/OpenAPI 3.0 (light mode, at `/docs`) |
+| Docs | First-party portal at `/docs` (client) · Swagger/OpenAPI 3.0 (dev-only, backend `/docs`) |
 | Containerization | Docker + docker-compose |
 | CI/CD | GitHub Actions |
 | Deployment | Client → Vercel, Server → Render |
@@ -465,6 +465,64 @@ External providers that call **us** hit the backend's own public URL directly
 | Security Headers | `next.config.ts` |
 
 **Rule:** Only add URLs to `sitemap.ts` that return 200. No anchor hash fragments.
+
+---
+
+## 10.5 Documentation Portal (/docs)
+
+The public documentation portal lives **in the client app** at `client/app/docs/`
+and owns the `/docs` route (the old rewrite that proxied `/docs` to the backend
+Swagger UI was removed — Swagger remains available in development directly at
+`localhost:4000/docs` and stays disabled in production).
+
+### Architecture
+
+```
+client/
+├── lib/docs/
+│   ├── navigation.ts       # SINGLE SOURCE OF TRUTH: section tree, page titles,
+│   │                       # descriptions, search terms. Drives the sidebar,
+│   │                       # breadcrumbs, prev/next, search index, and sitemap.
+│   └── highlight.tsx       # Dependency-free syntax highlighter (bash, json,
+│                           # ts, yaml, http, env, text) → doc-tok-* CSS classes
+├── components/docs/
+│   ├── DocsShell.tsx       # Top bar, sidebar (+ mobile drawer), breadcrumbs,
+│   │                       # prev/next, ⌘K handler, ToC rail
+│   ├── SearchModal.tsx     # Client-side search over navigation.ts entries
+│   ├── Toc.tsx             # "On this page" — harvests h2/h3[id] from the DOM,
+│   │                       # IntersectionObserver active highlight
+│   ├── CodeBlock.tsx       # Terminal-styled code block (dark in both themes),
+│   │                       # copy button strips leading "$ " prompts
+│   ├── ApiEndpoint.tsx     # Method badge + path + auth pill wrapper
+│   └── primitives.tsx      # PageTitle, H2/H3 (auto anchor ids), P, A, Code,
+│                           # Ul/Li, Callout, Steps/Step, DocTable, Pill,
+│                           # CardGrid/DocCard, FlowDiagram
+└── app/docs/               # One folder per page: <section>/<page>/page.tsx
+```
+
+### Conventions (MUST follow when adding/editing docs)
+
+1. **Adding a page = two changes**: create `app/docs/<section>/<slug>/page.tsx`
+   AND add its entry to `lib/docs/navigation.ts` (order in the tree = reading
+   order = prev/next order). The page's `metadata.title`/`description` must
+   match the registry entry.
+2. Pages are **server components** (no `"use client"`) composed exclusively
+   from `components/docs/*` primitives — never raw `<h2>/<p>/<table>/<pre>`.
+   Headings get automatic anchor ids; the ToC and search need them.
+3. **Accuracy over completeness**: verify every endpoint/flag/behavior against
+   the source before documenting. Unshipped features are marked with
+   `<Pill variant="planned" />` — never documented as existing.
+4. Escape entities in JSX text (`&apos;`, `&ldquo;` …) — `react/no-unescaped-entities`
+   is enforced.
+5. Search terms: add commands, endpoints, and error strings a user might type
+   to the page's `searchTerms` in the registry.
+6. The sitemap includes every docs page automatically (imports `ALL_DOC_PAGES`).
+
+### Maintenance rule
+
+Docs are part of the definition of done: any PR that changes CLI commands,
+API endpoints/shapes, supported frameworks, or provider behavior MUST update
+the matching page under `client/app/docs/` in the same PR.
 
 ---
 

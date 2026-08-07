@@ -13,12 +13,6 @@ const nextConfig: NextConfig = {
     root: path.resolve(__dirname),
   },
 
-  // Swagger UI (proxied at /docs) redirects /docs → /docs/. Next.js strips
-  // trailing slashes by default, which would bounce it straight back and cause
-  // an infinite redirect loop. Skipping the redirect lets both forms proxy
-  // through to the backend as-is.
-  skipTrailingSlashRedirect: true,
-
   async rewrites() {
     return [
       // User-facing API — transparently proxied to the backend.
@@ -27,16 +21,10 @@ const nextConfig: NextConfig = {
         source: "/api/:path*",
         destination: `${apiOrigin}/api/:path*`,
       },
-      // Swagger/OpenAPI docs served by the backend, kept on-domain so the
-      // frontend never links out to the Render URL.
-      {
-        source: "/docs",
-        destination: `${apiOrigin}/docs`,
-      },
-      {
-        source: "/docs/:path*",
-        destination: `${apiOrigin}/docs/:path*`,
-      },
+      // NOTE: /docs is the first-party documentation portal (app/docs) —
+      // no longer proxied to the backend Swagger UI. Swagger remains
+      // available in development directly at the backend origin (/docs on
+      // localhost:4000); it is disabled in production.
     ];
   },
 
