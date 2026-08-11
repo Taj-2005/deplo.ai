@@ -254,6 +254,23 @@ Access-Control-Allow-Origin: *`} />
 }`}
         />
       </ApiEndpoint>
+
+      <ApiEndpoint
+        method="GET"
+        path="/api/v1/public/stats"
+        auth="public"
+        description="Platform-wide totals used by the marketing site. No authentication, cached for five minutes both in-process and via Cache-Control. avgMinutesToProduction is the mean time from deployment creation to completion across all successful deployments, rounded up to whole minutes; it is null until at least one deployment has completed."
+      >
+        <CodeBlock language="bash" title="request" code={`curl https://www.deplo.in/api/v1/public/stats`} />
+        <CodeBlock
+          language="json"
+          title="response · 200"
+          code={`{
+  "deployments": 1284,
+  "avgMinutesToProduction": 3
+}`}
+        />
+      </ApiEndpoint>
     </>
   );
 }

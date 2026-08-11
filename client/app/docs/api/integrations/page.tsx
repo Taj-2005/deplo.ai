@@ -212,9 +212,10 @@ export default function ApiIntegrations() {
       </ApiEndpoint>
 
       <P>
-        Deployments require both providers to be connected — the backend deploys to Render, the frontend to Vercel.
-        See the <A href="/docs/integrations/vercel">Vercel</A> and <A href="/docs/integrations/render">Render</A>{" "}
-        guides for the dashboard flows behind these endpoints.
+        A deployment requires whichever providers its detected stack uses — Render for the backend, Vercel for the
+        frontend. A backend-only repository deploys with Render alone. See the{" "}
+        <A href="/docs/integrations/vercel">Vercel</A> and <A href="/docs/integrations/render">Render</A> guides for
+        the dashboard flows behind these endpoints.
       </P>
     </>
   );

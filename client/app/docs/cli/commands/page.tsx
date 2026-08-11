@@ -172,7 +172,12 @@ export default function CliCommands() {
       <Ul>
         <Li>
           Not signed in? It asks <em>&ldquo;You&apos;re not signed in. Sign in now?&rdquo;</em> and runs login
-          inline. Same for Vercel and Render: <em>&ldquo;Vercel isn&apos;t connected yet. Connect now?&rdquo;</em>
+          inline. Same for providers: <em>&ldquo;Vercel isn&apos;t connected yet. Connect now?&rdquo;</em>
+        </Li>
+        <Li>
+          Only the providers your repository actually needs are requested — Vercel when a frontend was detected,
+          Render when a backend was. A backend-only repository is never blocked on a Vercel connection. When both
+          are already connected the CLI skips detection entirely and goes straight to deploying.
         </Li>
         <Li>
           If the deployment pauses on <Code>WAITING_FOR_ENV</Code>, the CLI prompts for each required environment
