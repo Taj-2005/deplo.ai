@@ -1,5 +1,5 @@
 import * as p from "@clack/prompts";
-import { api, ApiError, type Repo } from "../api";
+import { api, ApiError, type Repo, type StackAnalysis } from "../api";
 import { resolveToken } from "../config";
 import { currentBranch, currentRepoFullName } from "../git";
 import * as ui from "../ui";
@@ -35,36 +35,91 @@ export async function resolveCurrentRepo(): Promise<Repo | null> {
   return repo;
 }
 
-/** Missing setup is a prompt, not an error — offer the fixing command inline. */
-async function ensurePrerequisites(interactive: boolean): Promise<boolean> {
-  if (!resolveToken()) {
-    if (!interactive) {
-      ui.fail(`not signed in — run ${ui.cyan("deplo login")} (or set DEPLO_TOKEN)`);
-      return false;
-    }
-    const go = await p.confirm({ message: "You're not signed in. Sign in now?" });
-    if (p.isCancel(go) || !go) return false;
-    await login({});
-    if (!resolveToken()) return false;
+type Provider = "VERCEL" | "RENDER";
+
+/** Not signed in is a prompt, not an error. Must run before any API call. */
+async function ensureAuth(interactive: boolean): Promise<boolean> {
+  if (resolveToken()) return true;
+  if (!interactive) {
+    ui.fail(`not signed in — run ${ui.cyan("deplo login")} (or set DEPLO_TOKEN)`);
+    return false;
+  }
+  const go = await p.confirm({ message: "You're not signed in. Sign in now?" });
+  if (p.isCancel(go) || !go) return false;
+  await login({});
+  return Boolean(resolveToken());
+}
+
+/**
+ * Which providers this repo actually needs: Vercel only when a frontend was
+ * detected, Render only when a backend was. A backend-only repo (FastAPI, Go…)
+ * must never be blocked on a Vercel connection it will never use. When the
+ * stack is unknown, fall back to requiring both.
+ */
+function requiredProviders(stack: StackAnalysis["stack"] | null): Provider[] {
+  if (!stack) return ["VERCEL", "RENDER"];
+  const needed: Provider[] = [];
+  if (stack.frontend) needed.push("VERCEL");
+  if (stack.backend) needed.push("RENDER");
+  return needed.length ? needed : ["VERCEL", "RENDER"];
+}
+
+/**
+ * Missing provider connections are prompts, not errors — offer them inline.
+ *
+ * The repo is only analyzed when something is actually missing: users who have
+ * both providers connected (the common case) pay no extra round-trip, and a
+ * backend-only repo is never blocked on a Vercel connection it won't use.
+ */
+async function ensureProviders(repositoryId: string, interactive: boolean): Promise<boolean> {
+  const integrations = await api.integrations();
+  const isConnected = (provider: Provider) =>
+    integrations.find((i) => i.provider === provider)?.connected ?? false;
+
+  const missing = (["VERCEL", "RENDER"] as const).filter((provider) => !isConnected(provider));
+  if (!missing.length) return true;
+
+  const analysis = await analyzeQuietly(repositoryId);
+  if (analysis) {
+    const parts: string[] = [];
+    if (analysis.stack.frontend) parts.push(`frontend=${ui.bold(analysis.stack.frontend)}`);
+    if (analysis.stack.backend) parts.push(`backend=${ui.bold(analysis.stack.backend)}`);
+    if (parts.length) ui.step(`stack detected  ${parts.join(ui.dim(" · "))}`);
   }
 
-  const integrations = await api.integrations();
-  for (const provider of ["VERCEL", "RENDER"] as const) {
-    const connected = integrations.find((i) => i.provider === provider)?.connected ?? false;
-    if (connected) continue;
+  const needed = requiredProviders(analysis?.stack ?? null);
+  const toConnect = missing.filter((provider) => needed.includes(provider));
+
+  for (const provider of toConnect) {
     const name = provider.toLowerCase();
+    const label = provider === "VERCEL" ? "Vercel" : "Render";
     if (!interactive) {
       ui.fail(`${name} is not connected — run ${ui.cyan(`deplo connect ${name}`)}`);
       return false;
     }
-    const go = await p.confirm({ message: `${provider === "VERCEL" ? "Vercel" : "Render"} isn't connected yet. Connect now?` });
+    const go = await p.confirm({ message: `${label} isn't connected yet. Connect now?` });
     if (p.isCancel(go) || !go) return false;
+
     if (provider === "VERCEL") await connectVercel({});
     else await connectRender({});
+
     const again = await api.integrations();
     if (!(again.find((i) => i.provider === provider)?.connected ?? false)) return false;
   }
   return true;
+}
+
+/**
+ * Detect the stack before deploying so the CLI can ask for exactly the
+ * providers this repo needs. Best-effort: analysis failures fall through to
+ * requiring both providers rather than blocking the deploy.
+ */
+async function analyzeQuietly(repositoryId: string): Promise<StackAnalysis | null> {
+  try {
+    return await api.analyze(repositoryId);
+  } catch {
+    return null;
+  }
 }
 
 async function promptForEnv(deploymentId: string): Promise<boolean> {
@@ -148,7 +203,8 @@ export async function followDeployment(deploymentId: string): Promise<void> {
 export async function deploy(options: { yes?: boolean }): Promise<void> {
   const interactive = process.stdout.isTTY === true && !options.yes;
   try {
-    if (!(await ensurePrerequisites(interactive))) {
+    // Auth first — everything below needs an authenticated API.
+    if (!(await ensureAuth(interactive))) {
       process.exitCode = process.exitCode ?? 1;
       return;
     }
@@ -160,6 +216,12 @@ export async function deploy(options: { yes?: boolean }): Promise<void> {
     }
     const branch = currentBranch() ?? repo.defaultBranch;
     ui.step(`repo detected ${ui.bold(`github.com/${repo.fullName}`)} ${ui.dim(`(${branch})`)}`);
+
+    // Ask only for the providers this repo actually needs.
+    if (!(await ensureProviders(repo.id, interactive))) {
+      process.exitCode = process.exitCode ?? 1;
+      return;
+    }
 
     if (interactive) {
       const go = await p.confirm({ message: `Deploy ${repo.fullName}?` });
