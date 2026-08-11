@@ -33,6 +33,10 @@ const faqs = [
     a: "No — that's the point. deplo.ai handles stack detection, build configuration, environment variables, and cross-service wiring automatically. If a deployment fails, an AI diagnosis explains what went wrong in plain language.",
   },
   {
+    q: "Can I deploy from the terminal?",
+    a: "Yes. The deplo CLI is published on npm as @deplo.ai/cli — install it with `npm i -g @deplo.ai/cli` (or run `npx @deplo.ai/cli`), sign in with `deplo login`, then run `deplo` inside any repo to deploy and follow the live log. It talks to the same API as the dashboard, so deployments appear in both, and it works in CI with a token.",
+  },
+  {
     q: "Is deplo.ai free?",
     a: "deplo.ai is free during beta. Your apps deploy to the free tiers of your own Vercel and Render accounts, so you can ship a fullstack app to production without paying anything.",
   },

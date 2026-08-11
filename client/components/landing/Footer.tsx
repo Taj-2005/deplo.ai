@@ -9,6 +9,7 @@ const footerLinks = [
     links: [
       { label: "Features", href: "#features" },
       { label: "How it works", href: "#how-it-works" },
+      { label: "CLI", href: "#cli" },
       { label: "Integrations", href: "#integrations" },
     ],
   },
@@ -16,9 +17,10 @@ const footerLinks = [
     group: "Developers",
     links: [
       { label: "Documentation", href: "/docs" },
-      { label: "GitHub", href: "https://github.com/deplolabs" },
+      { label: "CLI docs", href: "/docs/cli" },
       { label: "API Reference", href: "/docs/api" },
-      { label: "CLI", href: "/docs/cli" },
+      { label: "npm package", href: "https://www.npmjs.com/package/@deplo.ai/cli" },
+      { label: "GitHub", href: "https://github.com/deplolabs" },
     ],
   },
   {

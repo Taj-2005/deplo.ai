@@ -38,6 +38,20 @@ export interface Repo {
   url: string;
 }
 
+/** Result of GET /repos/:id/analyze — drives which providers a deploy needs. */
+export interface StackAnalysis {
+  stack: {
+    frontend: string | null;
+    backend: string | null;
+    frontendPath: string;
+    backendPath: string;
+    buildCommand: string | null;
+    packageManager: string;
+  };
+  envVars: Array<{ key: string; value: string; isRequired: boolean; source: string }>;
+  defaultBranch: string;
+}
+
 export interface Deployment {
   id: string;
   repositoryId: string;
@@ -102,6 +116,8 @@ export const api = {
   repos: () => request<Repo[]>("/repos"),
 
   syncRepos: () => request<{ synced: number }>("/repos/sync", { method: "POST" }),
+
+  analyze: (repositoryId: string) => request<StackAnalysis>(`/repos/${repositoryId}/analyze`),
 
   deployments: () => request<Deployment[]>("/deployments"),
 
