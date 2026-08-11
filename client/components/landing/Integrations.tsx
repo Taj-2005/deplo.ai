@@ -38,12 +38,13 @@ const integrations: Integration[] = [
     padded: true,
     live: true,
   },
+  // Not integrated yet — status must reflect what actually ships.
   {
     name: "Supabase",
     role: "Database",
     logo: "/supabase.png",
     bg: "bg-[#1C1C1C]",
-    live: true,
+    live: false,
   },
   {
     name: "Cloudflare",
@@ -51,11 +52,11 @@ const integrations: Integration[] = [
     logo: "/cloudflare.png",
     bg: "bg-white",
     padded: true,
-    live: true,
+    live: false,
   },
   {
     name: "Railway",
-    role: "Infra (soon)",
+    role: "Infra",
     logo: "/railway.png",
     bg: "bg-white",
     live: false,
@@ -118,8 +119,8 @@ export function Integrations() {
             </h2>
           </div>
           <p className="text-[14px] text-[#64748B] max-w-xs leading-relaxed">
-            deplo.ai orchestrates across GitHub, Vercel, Render, and more — no
-            account needed beyond GitHub OAuth.
+            deplo.ai orchestrates across GitHub, Vercel and Render — deploying into the accounts you
+            own, never ours. More providers on the roadmap.
           </p>
         </motion.div>
 

@@ -442,6 +442,19 @@ export function Hero() {
           </a>
         </motion.div>
 
+        {/* Terminal alternative — the CLI is a first-class entry point */}
+        <motion.a
+          href="#cli"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.55 }}
+          className="group -mt-1 flex items-center gap-2 font-mono text-[12.5px] text-[#94A3B8] hover:text-black transition-colors"
+        >
+          <span className="text-[#CBD5E1] group-hover:text-[#00D2FF] transition-colors">$</span>
+          npx @deplo.ai/cli
+          <span className="text-[#CBD5E1]">— prefer the terminal?</span>
+        </motion.a>
+
         {/* Pipeline visualization */}
         <PipelineViz />
 

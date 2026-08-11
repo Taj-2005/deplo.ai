@@ -12,27 +12,24 @@ interface TerminalLine {
   delay?: number;
 }
 
+// Mirrors the real output of @deplo.ai/cli — the glyphs, wording and command
+// shapes here must stay in sync with cli/src/ui.ts and cli/src/commands/.
 const terminalLines: TerminalLine[] = [
-  { text: "$ deplo deploy --repo ./my-app --branch main", type: "command" },
+  { text: "$ npx @deplo.ai/cli login", type: "command" },
+  { text: "→ opening https://www.deplo.in/cli-auth", type: "info" },
+  { text: "✓ signed in  you@github", type: "success" },
   { text: "", type: "blank" },
-  { text: "── Connecting to GitHub...           ✓", type: "info" },
-  { text: "── Analyzing repository structure...", type: "info" },
-  { text: "── Detected: Next.js 14 (frontend)", type: "info" },
-  { text: "── Detected: Express.js (backend)", type: "info" },
+  { text: "$ cd my-app && deplo", type: "command" },
+  { text: "→ repo detected   github.com/you/my-app (main)", type: "info" },
+  { text: "→ stack detected  frontend=Next.js · backend=Express", type: "info" },
   { text: "", type: "blank" },
-  { text: "── Resolving environment variables...", type: "info" },
-  { text: "── Injecting secrets securely...", type: "info" },
+  { text: "  Deploying backend to Render…", type: "info" },
+  { text: "✓ backend live    https://deplo-my-app-api.onrender.com", type: "url" },
+  { text: "  Wiring NEXT_PUBLIC_API_URL into the frontend build", type: "info" },
+  { text: "  Deploying frontend to Vercel…", type: "info" },
+  { text: "✓ frontend live   https://deplo-my-app-web.vercel.app", type: "url" },
   { text: "", type: "blank" },
-  { text: "── Deploying backend to Render...", type: "info" },
-  { text: "── Backend ready:                    ✓", type: "info" },
-  { text: "", type: "blank" },
-  { text: "── Injecting NEXT_PUBLIC_API_URL...", type: "info" },
-  { text: "── Deploying frontend to Vercel...", type: "info" },
-  { text: "── Frontend ready:                   ✓", type: "info" },
-  { text: "", type: "blank" },
-  { text: "✔  Production URLs ready", type: "success" },
-  { text: "   → https://my-app.vercel.app", type: "url" },
-  { text: "   → https://api-my-app.onrender.com", type: "url" },
+  { text: "● Deployed in 2:41", type: "success" },
 ];
 
 function lineColor(type: LineType): string {
@@ -170,8 +167,17 @@ export function Terminal() {
           transition={{ delay: 0.4, duration: 0.4 }}
           className="mt-6 text-center text-[13px] text-[#94A3B8]"
         >
-          Works with Next.js, React, Express, and Fastify. More frameworks
-          coming.
+          Real output from{" "}
+          <a
+            href="https://www.npmjs.com/package/@deplo.ai/cli"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#64748B] underline underline-offset-2 hover:text-black transition-colors"
+          >
+            @deplo.ai/cli
+          </a>
+          . Next.js, React, Vue, Nuxt, Astro, Svelte, Remix, Angular · Express, Fastify, FastAPI, Flask,
+          Django, Go.
         </motion.p>
       </div>
     </section>

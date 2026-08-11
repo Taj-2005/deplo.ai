@@ -12,6 +12,7 @@ import { APP_ENABLED } from "@/lib/flags";
 const navLinks = [
   { href: "#features", label: "Features" },
   { href: "#how-it-works", label: "How it works" },
+  { href: "#cli", label: "CLI" },
   { href: "#integrations", label: "Integrations" },
   // Pricing hidden while the platform is free — re-enable when plans exist.
   // { href: "#pricing", label: "Pricing" },

@@ -3,6 +3,7 @@ import { Navbar } from "@/components/landing/Navbar";
 import { Hero } from "@/components/landing/Hero";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { Terminal } from "@/components/landing/Terminal";
+import { Cli } from "@/components/landing/Cli";
 import { Integrations } from "@/components/landing/Integrations";
 import { Features } from "@/components/landing/Features";
 import { Trust } from "@/components/landing/Trust";
@@ -19,6 +20,7 @@ export default function Home() {
         <Hero />
         <HowItWorks />
         <Terminal />
+        <Cli />
         <Integrations />
         <Features />
         <Trust />
