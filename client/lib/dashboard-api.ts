@@ -224,6 +224,31 @@ export async function disconnectRender(): Promise<void> {
   await apiFetch("/integrations/render", { method: "DELETE" });
 }
 
+// ─── Feedback ─────────────────────────────────────────────────────────────────
+
+export type FeedbackType = "BUG" | "IDEA" | "OTHER";
+
+export interface FeedbackPayload {
+  type: FeedbackType;
+  message: string;
+  steps?: string;
+  context: {
+    path: string;
+    userAgent: string;
+    viewport: string;
+    appVersion: string;
+    occurredAt: string;
+    deploymentId?: string;
+  };
+}
+
+export async function sendFeedback(payload: FeedbackPayload): Promise<void> {
+  await apiFetch<{ received: boolean }>("/feedback", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 // ─── CLI tokens ───────────────────────────────────────────────────────────────
 
 export interface CliTokenInfo {

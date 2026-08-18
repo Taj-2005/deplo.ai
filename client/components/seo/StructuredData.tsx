@@ -40,7 +40,7 @@ const organization = {
   logo: "https://www.deplo.in/icon-512.png",
   description:
     "deplo.ai is an AI-powered deployment orchestration platform that deploys applications across providers into accounts the user owns — frontend to their Vercel account, backend to their Render workspace. No vendor lock-in: users keep every project, deployment, log, and domain.",
-  foundingDate: "2024",
+  foundingDate: "2026",
   // Entity consolidation — every official profile that links back to deplo.in
   // strengthens the brand→site binding. Add LinkedIn/GitHub/Product Hunt URLs
   // here as they exist.

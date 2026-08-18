@@ -49,6 +49,8 @@ const envSchema = z.object({
   SMTP_USER: z.string().min(1).optional(),
   SMTP_PASS: z.string().min(1).optional(),
   MAIL_FROM: z.string().default("deplo.ai <no-reply@deplo.in>"),
+  // Inbox that receives in-app feedback and bug reports. Falls back to SMTP_USER.
+  FEEDBACK_TO: z.string().email().optional(),
 
   ENCRYPTION_KEY: z.string().min(64),
 

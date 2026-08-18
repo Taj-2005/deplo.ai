@@ -7,6 +7,7 @@ import { CheckCircle2, ChevronRight, Loader2, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 import { getVercelInstallUrl } from "@/lib/dashboard-api";
+import { APP_VERSION } from "@/lib/version";
 
 // ─── Vercel logo ──────────────────────────────────────────────────────────────
 
@@ -184,7 +185,7 @@ function OnboardingContent() {
         </div>
 
         <p className="text-center text-[11px] font-mono text-ds-outline mt-8">
-          deplo.ai · v0.1.0-beta
+          deplo.ai · v{APP_VERSION}-beta
         </p>
       </motion.div>
     </div>

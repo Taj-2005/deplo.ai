@@ -51,6 +51,7 @@ import { WebhooksController } from "./interfaces/http/controllers/webhooks.contr
 import { IntegrationsController } from "./interfaces/http/controllers/integrations.controller";
 import { MonitoringController } from "./interfaces/http/controllers/monitoring.controller";
 import { CliTokensController } from "./interfaces/http/controllers/cli-tokens.controller";
+import { FeedbackController } from "./interfaces/http/controllers/feedback.controller";
 import { CliTokenService } from "./application/services/CliTokenService";
 import { createAuthMiddleware } from "./interfaces/http/middleware/auth.middleware";
 import { asyncHandler } from "./shared/utils/asyncHandler";
@@ -200,6 +201,7 @@ async function bootstrap(): Promise<void> {
   const integrationsController = new IntegrationsController(integrationService);
   const monitoringController = new MonitoringController(prisma, integrationService);
   const cliTokensController = new CliTokensController(cliTokenService);
+  const feedbackController = new FeedbackController(userRepository, mailer);
 
   // ── Public routes ─────────────────────────────────────────────────────────
   api.get("/health", asyncHandler(healthController.check));
@@ -246,6 +248,8 @@ async function bootstrap(): Promise<void> {
   api.post("/cli-tokens", asyncHandler(cliTokensController.create));
   api.get("/cli-tokens", asyncHandler(cliTokensController.list));
   api.delete("/cli-tokens/:id", asyncHandler(cliTokensController.revoke));
+
+  api.post("/feedback", asyncHandler(feedbackController.submit));
 
   api.get("/stats", asyncHandler(statsController.get));
 

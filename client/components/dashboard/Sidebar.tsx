@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {
+  Activity,
   LayoutDashboard,
   Layers,
   History,
@@ -17,6 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 
 const NAV_ITEMS = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Overview", exact: true },
+  { href: "/dashboard/active", icon: Activity, label: "Live", exact: false },
   { href: "/dashboard/repositories", icon: Layers, label: "Projects", exact: false },
   { href: "/dashboard/deployments", icon: History, label: "History", exact: false },
   { href: "/dashboard/integrations", icon: Plug2, label: "Integrations", exact: false },

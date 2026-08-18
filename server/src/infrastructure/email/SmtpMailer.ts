@@ -7,6 +7,8 @@ export interface MailMessage {
   subject: string;
   html: string;
   text: string;
+  /** Set so replying reaches the person the mail is about, not the no-reply box. */
+  replyTo?: string;
 }
 
 /**
@@ -43,6 +45,7 @@ export class SmtpMailer {
       subject: message.subject,
       html: message.html,
       text: message.text,
+      ...(message.replyTo ? { replyTo: message.replyTo } : {}),
     });
     logger.info("Notification email sent", { to: message.to, subject: message.subject });
   }

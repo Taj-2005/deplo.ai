@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Activity, AlertCircle, ArrowLeft, Check, Copy, ExternalLink, Globe, Loader2, Server } from "lucide-react";
+import { Activity, AlertCircle, Check, Copy, ExternalLink, Globe, Loader2, Server } from "lucide-react";
+import { BackLink } from "@/components/dashboard/BackLink";
 import Link from "next/link";
 import {
   getProjectAnalytics,
@@ -369,9 +370,11 @@ export default function MonitoringPage() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="max-w-[1100px] mx-auto px-6 py-8">
-      <Link href="/dashboard/deployments" className="flex items-center gap-1.5 text-[12px] font-mono text-ds-on-variant hover:text-ds-on-surface mb-4">
-        <ArrowLeft size={12} strokeWidth={1.5} /> Back to deployments
-      </Link>
+      <BackLink
+        fallback="live"
+        size={12}
+        className="flex items-center gap-1.5 text-[12px] font-mono text-ds-on-variant hover:text-ds-on-surface mb-4 w-fit"
+      />
 
       <div className="flex items-center justify-between mb-6">
         <div>

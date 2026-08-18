@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { CheckCircle2, LogOut, AlertTriangle, ChevronRight, Terminal, Copy, Check, Trash2 } from "lucide-react";
+import { APP_VERSION } from "@/lib/version";
 import {
   listCliTokens,
   createCliToken,
@@ -157,7 +158,7 @@ function CliTokensSection() {
   return (
     <Section
       title="CLI tokens"
-      description="Deploy from your terminal. Install with npm i -g deplo-cli, then run deplo login."
+      description="Deploy from your terminal. Install with npm i -g @deplo.ai/cli, then run deplo login."
     >
       {/* Create */}
       <div className="px-6 py-4">
@@ -376,7 +377,7 @@ export default function SettingsPage() {
 
         <div className="text-center py-2">
           <span className="text-[11px] font-mono text-ds-outline">
-            deplo.ai · v0.1.0-beta · MIT License
+            deplo.ai · v{APP_VERSION}-beta · MIT License
           </span>
         </div>
       </div>
