@@ -195,7 +195,7 @@ export function Integrations() {
         >
           More integrations shipping soon.{" "}
           <a
-            href="#"
+            href="mailto:deploai201@gmail.com?subject=Provider%20request"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
             Request one

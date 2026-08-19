@@ -23,7 +23,7 @@ deplo.ai is an **AI-powered deployment orchestration platform**. It eliminates D
 ```
 deplo-ai/
 ├── client/          # Next.js 16 landing page + future dashboard
-├── server/          # Node.js TypeScript API (GraphQL + REST)
+├── server/          # Node.js TypeScript API (REST)
 ├── docker-compose.yml
 ├── .github/
 │   └── workflows/
@@ -43,7 +43,7 @@ deplo-ai/
 | Styling | TailwindCSS v4 (`@import "tailwindcss"`) |
 | Animation | Framer Motion 12 |
 | Backend | Node.js 20, TypeScript 5 strict, Express 4 |
-| API | GraphQL (Apollo Server 4) + REST fallback |
+| API | REST (Express) — consumed by the dashboard and the deplo CLI |
 | Database | PostgreSQL 16 via Prisma ORM |
 | Cache | Redis 7 (ioredis) |
 | Auth | GitHub OAuth → JWT |
@@ -74,7 +74,6 @@ server/src/
 │   ├── vercel/          # VercelAdapter (project/deploy management)
 │   └── render/          # RenderAdapter (service/deploy management)
 ├── interfaces/          # Delivery mechanism layer
-│   ├── graphql/         # Apollo schema, resolvers, context
 │   ├── http/            # Express controllers, middleware, validators
 │   └── swagger/         # OpenAPI spec and Swagger UI setup
 └── shared/              # Cross-cutting concerns
@@ -216,32 +215,6 @@ Implementation contract:
 
 ---
 
-## 5. GraphQL Architecture
-
-### 5.1 Schema-First Approach
-
-All schema is defined in `src/interfaces/graphql/schema/typeDefs.ts` using SDL. This is the source of truth — TypeScript types are derived from the schema.
-
-### 5.2 Resolver Organization
-
-Resolvers live in `src/interfaces/graphql/resolvers/index.ts`. Split into domain-specific files when any domain exceeds ~300 lines.
-
-Rules:
-- Resolvers **never** call repositories directly — always through services
-- `requireAuth(ctx)` guard used at the start of all authenticated resolvers
-- Parent field resolvers use DataLoaders when N+1 risk exists
-
-### 5.3 Context
-
-Context is built per-request in `buildContext()`. It includes:
-- `prisma` — for simple queries
-- `userRepository`, `deploymentRepository` — domain repositories
-- `authService`, `deploymentService` — application services
-- `cache` — CacheService for Redis access
-- `currentUser` — resolved from JWT (or `null` for anonymous)
-
----
-
 ## 6. Database (PostgreSQL / Prisma)
 
 ### 6.1 Schema Rules
@@ -286,7 +259,6 @@ cache.buildKey("deployment", id);
 - GitHub OAuth Code → access token → AES-256-GCM encrypted at rest
 - JWT issued on each login (HS256, 7-day expiry)
 - HTTP: `createAuthMiddleware()` → `req.userId`
-- GraphQL: `buildContext()` → `ctx.currentUser`
 
 ### 8.5 Provider Integrations (per-user credentials)
 
@@ -699,8 +671,7 @@ npm run prisma:migrate && npm run dev  # → localhost:4000
 # 4. Client (new terminal)
 cd ../client && npm install && npm run dev  # → localhost:3000
 
-# 5. GraphQL Playground: http://localhost:4000/graphql
-# 6. API Docs (Swagger): http://localhost:4000/docs
+# 5. API Docs (Swagger, dev only): http://localhost:4000/docs
 ```
 
 ---

@@ -224,6 +224,47 @@ export async function disconnectRender(): Promise<void> {
   await apiFetch("/integrations/render", { method: "DELETE" });
 }
 
+// ─── Account ──────────────────────────────────────────────────────────────────
+
+/**
+ * Permanently deletes the account and everything deplo.ai stores about it.
+ * Apps already deployed keep running — they live in the user's own provider
+ * accounts, which are never touched.
+ */
+export async function deleteAccount(): Promise<void> {
+  const base = getApiBaseUrl();
+  const url = base ? `${base}/api/v1/auth/me` : `/api/v1/auth/me`;
+  const res = await fetch(url, { method: "DELETE", headers: authHeaders() });
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`Failed to delete account: ${res.status}`);
+  }
+}
+
+// ─── Feedback ─────────────────────────────────────────────────────────────────
+
+export type FeedbackType = "BUG" | "IDEA" | "OTHER";
+
+export interface FeedbackPayload {
+  type: FeedbackType;
+  message: string;
+  steps?: string;
+  context: {
+    path: string;
+    userAgent: string;
+    viewport: string;
+    appVersion: string;
+    occurredAt: string;
+    deploymentId?: string;
+  };
+}
+
+export async function sendFeedback(payload: FeedbackPayload): Promise<void> {
+  await apiFetch<{ received: boolean }>("/feedback", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 // ─── CLI tokens ───────────────────────────────────────────────────────────────
 
 export interface CliTokenInfo {

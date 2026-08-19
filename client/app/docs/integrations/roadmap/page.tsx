@@ -67,7 +67,7 @@ export default function ProviderRoadmap() {
 
       <P>
         Want one of these prioritized — or a provider that isn&apos;t listed? Tell us:{" "}
-        <A href="mailto:support@deplo.in">support@deplo.in</A>. Provider requests directly shape this roadmap.
+        <A href="mailto:deploai201@gmail.com">deploai201@gmail.com</A>. Provider requests directly shape this roadmap.
       </P>
     </>
   );

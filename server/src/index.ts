@@ -7,12 +7,7 @@ import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
-import { ApolloServer } from "@apollo/server";
-import { expressMiddleware } from "@apollo/server/express4";
 
-import { typeDefs } from "./interfaces/graphql/schema/typeDefs";
-import { resolvers } from "./interfaces/graphql/resolvers/index";
-import { buildContext } from "./interfaces/graphql/context/context";
 import { errorMiddleware } from "./interfaces/http/middleware/error.middleware";
 import { setupSwagger } from "./interfaces/swagger/swagger";
 
@@ -51,6 +46,7 @@ import { WebhooksController } from "./interfaces/http/controllers/webhooks.contr
 import { IntegrationsController } from "./interfaces/http/controllers/integrations.controller";
 import { MonitoringController } from "./interfaces/http/controllers/monitoring.controller";
 import { CliTokensController } from "./interfaces/http/controllers/cli-tokens.controller";
+import { FeedbackController } from "./interfaces/http/controllers/feedback.controller";
 import { CliTokenService } from "./application/services/CliTokenService";
 import { createAuthMiddleware } from "./interfaces/http/middleware/auth.middleware";
 import { asyncHandler } from "./shared/utils/asyncHandler";
@@ -156,27 +152,6 @@ async function bootstrap(): Promise<void> {
   });
   app.use(limiter);
 
-  // ── GraphQL ───────────────────────────────────────────────────────────────
-  const apollo = new ApolloServer({ typeDefs, resolvers });
-  await apollo.start();
-
-  const graphqlServices = {
-    prisma,
-    userRepository,
-    deploymentRepository,
-    authService,
-    deploymentService,
-    repositoryService,
-    cache,
-  };
-
-  app.use(
-    "/graphql",
-    expressMiddleware(apollo, {
-      context: async ({ req }) => buildContext(req, graphqlServices),
-    }),
-  );
-
   // ── REST API ──────────────────────────────────────────────────────────────
   const api = express.Router();
   const cliTokenService = new CliTokenService(prisma);
@@ -200,6 +175,7 @@ async function bootstrap(): Promise<void> {
   const integrationsController = new IntegrationsController(integrationService);
   const monitoringController = new MonitoringController(prisma, integrationService);
   const cliTokensController = new CliTokensController(cliTokenService);
+  const feedbackController = new FeedbackController(userRepository, mailer);
 
   // ── Public routes ─────────────────────────────────────────────────────────
   api.get("/health", asyncHandler(healthController.check));
@@ -223,6 +199,7 @@ async function bootstrap(): Promise<void> {
   // ── Protected routes ──────────────────────────────────────────────────────
   api.use(authMiddleware);
   api.get("/auth/me", asyncHandler(authController.getCurrentUser));
+  api.delete("/auth/me", asyncHandler(authController.deleteAccount));
 
   api.get("/repos", asyncHandler(reposController.list));
   api.get("/repos/:id/analyze", asyncHandler(reposController.analyzeStack));
@@ -247,6 +224,8 @@ async function bootstrap(): Promise<void> {
   api.get("/cli-tokens", asyncHandler(cliTokensController.list));
   api.delete("/cli-tokens/:id", asyncHandler(cliTokensController.revoke));
 
+  api.post("/feedback", asyncHandler(feedbackController.submit));
+
   api.get("/stats", asyncHandler(statsController.get));
 
   app.use(`/api/${env.API_VERSION}`, api);
@@ -261,7 +240,6 @@ async function bootstrap(): Promise<void> {
   // ── Start ─────────────────────────────────────────────────────────────────
   const server = app.listen(env.PORT, () => {
     logger.info(`Server running on http://localhost:${env.PORT}`);
-    logger.info(`GraphQL:  http://localhost:${env.PORT}/graphql`);
     logger.info(`REST:     http://localhost:${env.PORT}/api/${env.API_VERSION}`);
     if (docsMounted) {
       logger.info(`API Docs: http://localhost:${env.PORT}/docs`);

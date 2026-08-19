@@ -67,7 +67,6 @@ export default function ProjectStructure() {
 │       │   ├── github/  vercel/  render/  groq/  email/   # external adapters
 │       ├── interfaces/
 │       │   ├── http/            # REST controllers + middleware
-│       │   ├── graphql/         # Apollo schema, resolvers, context
 │       │   └── swagger/         # OpenAPI spec (dev-only UI)
 │       └── shared/              # Winston logger, AppError
 │
@@ -100,9 +99,8 @@ export default function ProjectStructure() {
 
       <H2>server/ — the API and workers</H2>
       <P>
-        One Node.js 20 process serves the REST API (<Code>/api/v1</Code>), the GraphQL endpoint
-        (<Code>/graphql</Code>), and runs the background workers. It follows strict clean architecture — each layer
-        depends only inward:
+        One Node.js 20 process serves the REST API (<Code>/api/v1</Code>) and runs the background workers. It
+        follows strict clean architecture — each layer depends only inward:
       </P>
       <DocTable head={["Layer", "Responsibility", "Depends on"]}>
         <Tr>
@@ -122,7 +120,7 @@ export default function ProjectStructure() {
         </Tr>
         <Tr>
           <Td mono>interfaces/</Td>
-          <Td>Delivery: REST controllers, GraphQL resolvers, Swagger. Controllers route; services decide.</Td>
+          <Td>Delivery: REST controllers, middleware, Swagger. Controllers route; services decide.</Td>
           <Td mono>application</Td>
         </Tr>
       </DocTable>
@@ -179,7 +177,7 @@ export default function ProjectStructure() {
         title="local development"
         code={`$ docker compose up postgres redis -d
 
-# server → http://localhost:4000  (REST /api/v1 · GraphQL /graphql · Swagger /docs)
+# server → http://localhost:4000  (REST /api/v1 · Swagger /docs)
 $ cd server && npm install && cp .env.example .env
 $ npm run prisma:migrate && npm run dev
 

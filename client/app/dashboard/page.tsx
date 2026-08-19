@@ -2,7 +2,9 @@
 
 import { useMemo } from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { APP_VERSION, COPYRIGHT_YEARS } from "@/lib/version";
 import { Activity,
   TrendingUp,
   Server,
@@ -70,10 +72,10 @@ function ProjectCard({ dep }: { dep: Deployment }) {
   const router = useRouter();
   return (
     <div
-      onClick={() => router.push(`/dashboard/deployments/${dep.id}`)}
+      onClick={() => router.push(`/dashboard/deployments/${dep.id}?from=overview`)}
       role="link"
       tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && router.push(`/dashboard/deployments/${dep.id}`)}
+      onKeyDown={(e) => e.key === "Enter" && router.push(`/dashboard/deployments/${dep.id}?from=overview`)}
       className="bg-ds-surface border border-ds-outline-variant p-6 hover:shadow-lg transition-shadow relative overflow-hidden cursor-pointer"
     >
       <div
@@ -141,7 +143,7 @@ function ProjectCard({ dep }: { dep: Deployment }) {
               <span className="text-ds-on-surface">{formatRelativeTime(dep.updatedAt)}</span>
             </div>
             <a
-              href={`/dashboard/monitoring/${dep.repositoryId}`}
+              href={`/dashboard/monitoring/${dep.repositoryId}?from=overview`}
               onClick={(e) => e.stopPropagation()}
               className="flex items-center gap-1.5 text-ds-primary hover:opacity-80 transition-opacity pt-1"
             >
@@ -231,6 +233,15 @@ export default function DashboardPage() {
     return formatDuration(Math.round(avg));
   }, [deployments]);
 
+  // Share of finished deployments that succeeded — a real number, unlike the
+  // hardcoded uptime figure this replaced.
+  const successRate = useMemo(() => {
+    const finished = (deployments ?? []).filter((d) => d.status === "COMPLETED" || d.status === "FAILED");
+    if (!finished.length) return "—";
+    const ok = finished.filter((d) => d.status === "COMPLETED").length;
+    return `${Math.round((ok / finished.length) * 100)}%`;
+  }, [deployments]);
+
   return (
     <div className="p-6 space-y-6">
       {/* KPI Strip */}
@@ -252,18 +263,19 @@ export default function DashboardPage() {
               <KpiTile
                 label="Total Projects"
                 value={String(stats?.connectedRepos ?? 0)}
-                meta="+2 this month"
-                metaClass="text-green-600 dark:text-green-400"
+                meta="Synced from GitHub"
                 icon={<TrendingUp size={13} strokeWidth={1.5} />}
               />
             </motion.div>
             <motion.div variants={STAGGER.item}>
-              <KpiTile
-                label="Active Deployments"
-                value={String(stats?.activeDeployments ?? 0)}
-                meta="Across Vercel + Render"
-                icon={<Server size={13} strokeWidth={1.5} />}
-              />
+              <Link href="/dashboard/active" className="block">
+                <KpiTile
+                  label="Active Deployments"
+                  value={String(stats?.activeDeployments ?? 0)}
+                  meta="Watch them live →"
+                  icon={<Server size={13} strokeWidth={1.5} />}
+                />
+              </Link>
             </motion.div>
             <motion.div variants={STAGGER.item}>
               <KpiTile
@@ -276,10 +288,18 @@ export default function DashboardPage() {
             </motion.div>
             <motion.div variants={STAGGER.item}>
               <KpiTile
-                label="System Uptime"
-                value="99.99%"
-                meta="All systems operational"
-                metaClass="text-blue-600 dark:text-blue-400"
+                label="Success Rate"
+                value={successRate}
+                meta={
+                  stats && stats.failedDeployments > 0
+                    ? `${stats.failedDeployments} failed`
+                    : "No failures yet"
+                }
+                metaClass={
+                  stats && stats.failedDeployments > 0
+                    ? "text-ds-on-variant"
+                    : "text-green-600 dark:text-green-400"
+                }
                 icon={<CheckCircle2 size={13} strokeWidth={1.5} />}
               />
             </motion.div>
@@ -382,11 +402,18 @@ export default function DashboardPage() {
         </div>
         <div>
           <p className="text-[11px] font-mono text-ds-on-variant mb-2">Frameworks</p>
-          <p className="text-[14px] font-medium text-ds-on-surface">Next.js · Express · Fastify</p>
+          <Link
+            href="/docs/getting-started/introduction"
+            className="text-[14px] font-medium text-ds-on-surface hover:text-ds-on-variant transition-colors"
+          >
+            11 frontend · 6 backend
+          </Link>
         </div>
         <div className="md:text-right md:flex md:flex-col md:items-end justify-end">
-          <p className="text-[11px] font-mono text-ds-on-variant">© 2024 deplo.ai</p>
-          <p className="text-[10px] font-mono text-ds-on-variant">v0.1.0-beta</p>
+          <p suppressHydrationWarning className="text-[11px] font-mono text-ds-on-variant">
+            © {COPYRIGHT_YEARS} deplo.ai
+          </p>
+          <p className="text-[10px] font-mono text-ds-on-variant">v{APP_VERSION}-beta</p>
         </div>
       </footer>
     </div>

@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getIntegrations } from "@/lib/dashboard-api";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { FeedbackWidget } from "./FeedbackWidget";
 
 function LoadingScreen() {
   return (
@@ -65,6 +66,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <TopBar />
         <main className="flex-1 overflow-y-auto overscroll-none">{children}</main>
       </div>
+      <FeedbackWidget />
     </div>
   );
 }

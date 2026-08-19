@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { BackLink } from "@/components/dashboard/BackLink";
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import {
   Activity,
-  ArrowLeft,
   ExternalLink,
   Copy,
   CheckCheck,
@@ -329,7 +329,6 @@ function EnvField({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DeploymentDetailPage() {
-  const router = useRouter();
   const params = useParams();
   const id = params["id"] as string;
 
@@ -404,13 +403,7 @@ export default function DeploymentDetailPage() {
   if (error || !dep) {
     return (
       <div className="max-w-3xl mx-auto px-6 py-8">
-        <button
-          onClick={() => router.push("/dashboard/deployments")}
-          className="flex items-center gap-1.5 text-[13px] font-mono text-ds-on-variant hover:text-ds-on-surface mb-6 transition-colors"
-        >
-          <ArrowLeft size={14} strokeWidth={1.5} />
-          Back to deployments
-        </button>
+        <BackLink />
         <div className="border border-ds-outline-variant p-8 text-center">
           <AlertCircle size={24} strokeWidth={1.5} className="mx-auto mb-3 text-ds-on-variant" />
           <p className="text-[14px] text-ds-on-surface mb-1">Failed to load deployment</p>
@@ -442,13 +435,7 @@ export default function DeploymentDetailPage() {
       className="max-w-3xl mx-auto px-6 py-8"
     >
       {/* Back */}
-      <button
-        onClick={() => router.push("/dashboard/deployments")}
-        className="flex items-center gap-1.5 text-[13px] font-mono text-ds-on-variant hover:text-ds-on-surface mb-6 transition-colors"
-      >
-        <ArrowLeft size={14} strokeWidth={1.5} />
-        Back to deployments
-      </button>
+      <BackLink />
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-6">

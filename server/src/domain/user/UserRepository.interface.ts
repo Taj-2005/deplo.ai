@@ -6,4 +6,6 @@ export interface IUserRepository {
   findByEmail(email: string): Promise<User | null>;
   create(input: CreateUserInput): Promise<User>;
   update(id: string, input: UpdateUserInput): Promise<User>;
+  /** Permanently removes the user; all owned records cascade. */
+  delete(id: string): Promise<void>;
 }

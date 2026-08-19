@@ -203,10 +203,10 @@ export function DocsShell({ children }: { children: React.ReactNode }) {
             <span key={pathname}>
               deplo.ai docs ·{" "}
               <a
-                href="mailto:support@deplo.in"
+                href="mailto:deploai201@gmail.com"
                 className="hover:text-ds-on-surface transition-colors"
               >
-                support@deplo.in
+                deploai201@gmail.com
               </a>
             </span>
           </footer>
