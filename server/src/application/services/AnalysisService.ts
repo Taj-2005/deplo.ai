@@ -9,6 +9,20 @@ import { RepoSnapshot } from "../analysis/ports";
 import { toDetectedStack } from "../analysis/legacyMapper";
 import { decrypt } from "../../shared/utils/crypto";
 import { logger } from "../../shared/logger/logger";
+import type { CacheService } from "../../infrastructure/redis/CacheService";
+
+/**
+ * A single analysis costs roughly 80 GitHub API calls — one recursive tree
+ * plus a bounded fan-out of file reads — against a 5,000/hour per-user budget.
+ * The same repo is analysed repeatedly in normal use (opening Configure, then
+ * deploying, then retrying), so results are cached per repo+ref. Pushes
+ * invalidate the entry, so a cache hit can never serve a stale stack.
+ */
+const ANALYSIS_TTL_SECONDS = 900;
+
+export function analysisCacheKey(fullName: string, ref: string): string {
+  return `analysis:${fullName}:${ref}`;
+}
 
 // ─── Service ─────────────────────────────────────────────────────────────────
 
@@ -30,6 +44,8 @@ export class AnalysisService {
     private readonly github: GitHubAdapter,
     /** Optional Layer 3 AI fallback — engine is deterministic-only without it. */
     private readonly reasoning: GroqReasoningService | null = null,
+    /** Optional cache — without it every call re-reads the repo from GitHub. */
+    private readonly cache: CacheService | null = null,
   ) {}
 
   async analyzeRepository(
@@ -38,6 +54,15 @@ export class AnalysisService {
     ref = "HEAD",
   ): Promise<RepositoryAnalysisResult> {
     const token = decrypt(encryptedToken);
+
+    const cacheKey = analysisCacheKey(fullName, ref);
+    if (this.cache) {
+      const hit = await this.cache.get<RepositoryAnalysisResult>(cacheKey);
+      if (hit) {
+        logger.info("Analysis served from cache", { fullName, ref });
+        return hit;
+      }
+    }
 
     // Layered deterministic analysis over a single cached repo snapshot.
     const source = new RepoSourceAdapter(this.github, token, fullName, ref);
@@ -101,6 +126,15 @@ export class AnalysisService {
       frontendApiKeys: stack.frontendApiKeys,
     });
 
-    return { stack, envVars, analysis };
+    const result: RepositoryAnalysisResult = { stack, envVars, analysis };
+
+    // Values read from a real .env are blanked by the scanner before this
+    // point, so nothing secret is cached — only keys, example values, and the
+    // detected stack.
+    if (this.cache) {
+      await this.cache.set(cacheKey, result, ANALYSIS_TTL_SECONDS);
+    }
+
+    return result;
   }
 }

@@ -89,7 +89,7 @@ async function bootstrap(): Promise<void> {
     : null;
   logger.info(reasoning ? `Groq AI reasoning enabled (${env.GROQ_MODEL}, ${groqTokens.length} key(s))` : "Groq AI reasoning disabled (no keys)");
 
-  const analysisService = new AnalysisService(github, reasoning);
+  const analysisService = new AnalysisService(github, reasoning, cache);
 
   // Deployment lifecycle emails (soft-off until SMTP env vars are set).
   const mailer = new SmtpMailer();
@@ -171,6 +171,7 @@ async function bootstrap(): Promise<void> {
     repositoryRepository,
     deploymentQueue,
     integrationService,
+    cache,
   );
   const integrationsController = new IntegrationsController(integrationService);
   const monitoringController = new MonitoringController(prisma, integrationService);

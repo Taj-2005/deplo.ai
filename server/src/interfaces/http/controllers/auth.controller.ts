@@ -11,7 +11,7 @@ export class AuthController {
     private readonly userRepository: IUserRepository,
   ) {}
 
-  getGithubOAuthUrl = (_req: Request, res: Response): void => {
+  getGithubOAuthUrl = (req: Request, res: Response): void => {
     const params = new URLSearchParams({
       client_id: env.GITHUB_CLIENT_ID,
       redirect_uri: env.GITHUB_REDIRECT_URI,
@@ -20,6 +20,15 @@ export class AuthController {
       // read:user + user:email — profile and email access
       scope: "read:user user:email repo admin:repo_hook",
     });
+
+    // After an explicit sign-out GitHub would otherwise re-authorize silently
+    // — already-granted app plus a live github.com session means no prompt —
+    // and drop the user straight back into the account they just left.
+    // select_account forces the picker. Only this one value is forwarded.
+    if (req.query["prompt"] === "select_account") {
+      params.set("prompt", "select_account");
+    }
+
     res.redirect(`https://github.com/login/oauth/authorize?${params.toString()}`);
   };
 

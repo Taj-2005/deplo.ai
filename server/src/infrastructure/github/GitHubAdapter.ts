@@ -205,6 +205,24 @@ export class GitHubAdapter {
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
+
+      // Rate limiting deserves a human answer, not a raw 403 body: say what
+      // happened and exactly when it clears. GitHub allows 5,000 requests per
+      // hour per authenticated user, shared across everything deplo does on
+      // their behalf.
+      const remaining = res.headers.get("x-ratelimit-remaining");
+      if (res.status === 403 && remaining === "0") {
+        const reset = Number(res.headers.get("x-ratelimit-reset") ?? 0);
+        const when = reset
+          ? new Date(reset * 1000).toISOString().slice(11, 16) + " UTC"
+          : "shortly";
+        logger.warn("GitHub rate limit exhausted", { path, resetsAt: when });
+        throw AppError.externalService(
+          "GitHub",
+          `API rate limit exhausted (5,000 requests/hour). It resets at ${when} — retry after that.`,
+        );
+      }
+
       throw AppError.externalService(
         "GitHub",
         `${res.status} ${res.statusText}: ${text}`,

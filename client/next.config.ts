@@ -13,6 +13,15 @@ const nextConfig: NextConfig = {
     root: path.resolve(__dirname),
   },
 
+  // GitHub profile pictures, shown in the dashboard sidebar and settings.
+  // Rendered with `unoptimized` so they never consume Vercel's image quota;
+  // the allowlist is declared anyway so the optimizer path also works.
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "avatars.githubusercontent.com" },
+    ],
+  },
+
   async rewrites() {
     return [
       // User-facing API — transparently proxied to the backend.
