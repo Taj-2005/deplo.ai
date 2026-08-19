@@ -14,6 +14,7 @@ import {
   decodeToken,
   isTokenValid,
   getGithubAuthUrl,
+  verifySession,
 } from "@/lib/auth";
 
 interface AuthUser {
@@ -48,13 +49,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     // Deferred a tick: reading localStorage synchronously in the effect body
     // would trip react-hooks/set-state-in-effect and still block paint.
     const t = setTimeout(() => {
-      setUser(readUserFromStorage());
+      const stored = readUserFromStorage();
+      setUser(stored);
       setIsLoading(false);
+
+      // A locally-decoded JWT only proves it hasn't expired. It says nothing
+      // about whether the account still exists, whether the signing secret
+      // rotated, or whether this is a stale token left behind by whoever used
+      // the browser last — so confirm with the server and drop it if rejected.
+      const token = getToken();
+      if (!stored || !token) return;
+      void verifySession(token).then((verdict) => {
+        if (cancelled || verdict !== "invalid") return;
+        clearToken();
+        setUser(null);
+      });
     }, 0);
-    return () => clearTimeout(t);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
   }, []);
 
   const signIn = useCallback(() => {

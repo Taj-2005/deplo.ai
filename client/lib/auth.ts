@@ -59,3 +59,29 @@ export function getGithubAuthUrl(): string {
   // 302-redirects the browser to GitHub. Keeps the user on the frontend domain.
   return `${getApiBaseUrl()}/api/v1/auth/github`;
 }
+
+/**
+ * Ask the server whether this token is still valid.
+ *
+ * A JWT decoded in the browser only proves it hasn't *expired* — not that the
+ * account still exists, that the signing secret hasn't rotated, or that the
+ * session wasn't ended elsewhere. Only the server knows that.
+ *
+ * Returns "valid" | "invalid" | "unknown". "unknown" covers network failures
+ * and 5xx — including a cold-starting Render backend — and must NOT sign the
+ * user out, or every slow start would eject them.
+ */
+export async function verifySession(token: string): Promise<"valid" | "invalid" | "unknown"> {
+  try {
+    const base = getApiBaseUrl();
+    const res = await fetch(`${base}/api/v1/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (res.ok) return "valid";
+    if (res.status === 401 || res.status === 403) return "invalid";
+    return "unknown";
+  } catch {
+    return "unknown";
+  }
+}

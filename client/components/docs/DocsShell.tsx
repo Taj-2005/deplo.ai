@@ -132,7 +132,7 @@ export function DocsShell({ children }: { children: React.ReactNode }) {
             <Menu size={17} strokeWidth={1.5} />
           </button>
 
-          <Link href="/" className="flex items-center gap-2.5">
+          <Link href="/?stay=1" className="flex items-center gap-2.5">
             <Image src="/logo.png" alt="" width={22} height={22} className="object-contain dark:hidden" />
             <Image src="/logo-dark.png" alt="" width={22} height={22} className="object-contain hidden dark:block" />
             <span className="text-[15px] font-semibold tracking-[-0.04em] text-ds-on-surface">
