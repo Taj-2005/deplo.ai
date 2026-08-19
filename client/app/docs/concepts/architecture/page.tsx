@@ -105,7 +105,7 @@ export default function Architecture() {
         </Tr>
         <Tr>
           <Td mono>interfaces/</Td>
-          <Td>Delivery: Express controllers and middleware, the GraphQL schema and resolvers, Swagger</Td>
+          <Td>Delivery: Express controllers, middleware, Swagger</Td>
           <Td>
             <Code>application</Code> services — never <Code>infrastructure</Code> directly
           </Td>
@@ -115,8 +115,8 @@ export default function Architecture() {
         <Code>config/</Code> (Zod-validated environment) and <Code>shared/</Code> (logger, <Code>AppError</Code>) are
         usable by all layers. Everything is composed once at startup in <Code>server/src/index.ts</Code>: repositories
         are constructed over Prisma, services over repositories, controllers over services, and the worker over the
-        orchestrator — plain constructor injection, no DI framework. The same services back both the REST API (mounted
-        at <Code>/api/v1</Code>) and the GraphQL endpoint (<Code>/graphql</Code>).
+        orchestrator — plain constructor injection, no DI framework. Those services back the REST API mounted at{" "}
+        <Code>/api/v1</Code>, which the dashboard and the CLI both consume.
       </P>
 
       <H2>The detection engine</H2>
