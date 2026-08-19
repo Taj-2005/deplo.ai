@@ -233,6 +233,15 @@ export default function DashboardPage() {
     return formatDuration(Math.round(avg));
   }, [deployments]);
 
+  // Share of finished deployments that succeeded — a real number, unlike the
+  // hardcoded uptime figure this replaced.
+  const successRate = useMemo(() => {
+    const finished = (deployments ?? []).filter((d) => d.status === "COMPLETED" || d.status === "FAILED");
+    if (!finished.length) return "—";
+    const ok = finished.filter((d) => d.status === "COMPLETED").length;
+    return `${Math.round((ok / finished.length) * 100)}%`;
+  }, [deployments]);
+
   return (
     <div className="p-6 space-y-6">
       {/* KPI Strip */}
@@ -254,8 +263,7 @@ export default function DashboardPage() {
               <KpiTile
                 label="Total Projects"
                 value={String(stats?.connectedRepos ?? 0)}
-                meta="+2 this month"
-                metaClass="text-green-600 dark:text-green-400"
+                meta="Synced from GitHub"
                 icon={<TrendingUp size={13} strokeWidth={1.5} />}
               />
             </motion.div>
@@ -280,10 +288,18 @@ export default function DashboardPage() {
             </motion.div>
             <motion.div variants={STAGGER.item}>
               <KpiTile
-                label="System Uptime"
-                value="99.99%"
-                meta="All systems operational"
-                metaClass="text-blue-600 dark:text-blue-400"
+                label="Success Rate"
+                value={successRate}
+                meta={
+                  stats && stats.failedDeployments > 0
+                    ? `${stats.failedDeployments} failed`
+                    : "No failures yet"
+                }
+                metaClass={
+                  stats && stats.failedDeployments > 0
+                    ? "text-ds-on-variant"
+                    : "text-green-600 dark:text-green-400"
+                }
                 icon={<CheckCircle2 size={13} strokeWidth={1.5} />}
               />
             </motion.div>

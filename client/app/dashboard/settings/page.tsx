@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { CheckCircle2, LogOut, AlertTriangle, ChevronRight, Terminal, Copy, Check, Trash2 } from "lucide-react";
 import { APP_VERSION } from "@/lib/version";
 import {
+  deleteAccount,
   listCliTokens,
   createCliToken,
   revokeCliToken,
@@ -55,33 +56,6 @@ function SettingRow({
       </div>
       {children}
     </div>
-  );
-}
-
-// ─── Toggle ───────────────────────────────────────────────────────────────────
-
-function Toggle({
-  checked,
-  onChange,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <button
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={`relative w-9 h-5 transition-colors ${
-        checked ? "bg-ds-primary" : "bg-ds-outline-variant"
-      }`}
-    >
-      <span
-        className={`absolute top-0.5 left-0.5 w-4 h-4 bg-ds-on-primary transition-transform ${
-          checked ? "translate-x-4" : "translate-x-0"
-        }`}
-      />
-    </button>
   );
 }
 
@@ -245,9 +219,24 @@ function CliTokensSection() {
 
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
-  const [deployNotifs, setDeployNotifs] = useState(true);
-  const [failureAlerts, setFailureAlerts] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Irreversible: removes the account and every record deplo.ai holds. Apps
+  // already deployed keep running in the user's own provider accounts.
+  const onDeleteAccount = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteAccount();
+      signOut();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Couldn't delete the account");
+      setDeleting(false);
+    }
+  };
 
   const userInitial = user?.email?.[0]?.toUpperCase() ?? "U";
 
@@ -327,18 +316,33 @@ export default function SettingsPage() {
         <CliTokensSection />
 
         {/* Notifications */}
-        <Section title="Notifications" description="Configure deployment alerts.">
+        <Section title="Email notifications" description="Sent to your GitHub account address.">
           <SettingRow
-            label="Deployment success"
-            description="Notify when a deployment completes."
+            label="Deployment succeeded"
+            description="Production URLs as soon as your app is live."
           >
-            <Toggle checked={deployNotifs} onChange={setDeployNotifs} />
+            <span className="flex items-center gap-1.5 text-[12px] font-mono text-green-700 dark:text-green-400">
+              <CheckCircle2 size={11} strokeWidth={1.5} />
+              On
+            </span>
           </SettingRow>
           <SettingRow
-            label="Failure alerts"
-            description="Notify when a deployment fails."
+            label="Deployment failed"
+            description="AI diagnosis with the cause, the file, and a fix prompt."
           >
-            <Toggle checked={failureAlerts} onChange={setFailureAlerts} />
+            <span className="flex items-center gap-1.5 text-[12px] font-mono text-green-700 dark:text-green-400">
+              <CheckCircle2 size={11} strokeWidth={1.5} />
+              On
+            </span>
+          </SettingRow>
+          <SettingRow
+            label="Waiting for input"
+            description="When a deployment pauses for environment variables."
+          >
+            <span className="flex items-center gap-1.5 text-[12px] font-mono text-green-700 dark:text-green-400">
+              <CheckCircle2 size={11} strokeWidth={1.5} />
+              On
+            </span>
           </SettingRow>
         </Section>
 
@@ -367,12 +371,19 @@ export default function SettingsPage() {
                 >
                   Cancel
                 </button>
-                <button className="px-2 py-1 text-[12px] font-mono text-red-600 border border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950 transition-colors">
-                  Confirm
+                <button
+                  onClick={onDeleteAccount}
+                  disabled={deleting}
+                  className="px-2 py-1 text-[12px] font-mono text-red-600 border border-red-200 hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950 transition-colors"
+                >
+                  {deleting ? "Deleting…" : "Confirm"}
                 </button>
               </div>
             )}
           </SettingRow>
+          {deleteError && (
+            <div className="px-6 py-3 text-[12px] font-mono text-red-600 dark:text-red-400">{deleteError}</div>
+          )}
         </Section>
 
         <div className="text-center py-2">

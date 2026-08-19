@@ -225,6 +225,7 @@ async function bootstrap(): Promise<void> {
   // ── Protected routes ──────────────────────────────────────────────────────
   api.use(authMiddleware);
   api.get("/auth/me", asyncHandler(authController.getCurrentUser));
+  api.delete("/auth/me", asyncHandler(authController.deleteAccount));
 
   api.get("/repos", asyncHandler(reposController.list));
   api.get("/repos/:id/analyze", asyncHandler(reposController.analyzeStack));

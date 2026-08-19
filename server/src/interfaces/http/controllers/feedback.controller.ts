@@ -47,7 +47,7 @@ export class FeedbackController {
     const recipient = env.FEEDBACK_TO ?? env.SMTP_USER;
     if (!this.mailer.isConfigured() || !recipient) {
       logger.warn("Feedback received but mail is not configured", { userId: user.id, type: parsed.data.type });
-      throw AppError.internal("Feedback can't be delivered right now — please email support@deplo.in");
+      throw AppError.internal("Feedback can't be delivered right now — please email deploai201@gmail.com");
     }
 
     // GitHub's privacy-mode addresses can't receive replies; don't set Reply-To

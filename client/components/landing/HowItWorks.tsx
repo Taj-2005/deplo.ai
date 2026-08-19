@@ -190,10 +190,10 @@ export function HowItWorks() {
         >
           Total time: under 3 minutes.{" "}
           <a
-            href="#"
+            href="/docs/getting-started/quickstart"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
-            See a live demo
+            Read the quickstart
           </a>
         </motion.p>
       </div>

@@ -48,7 +48,9 @@ const envSchema = z.object({
     .transform((v) => v === "true"),
   SMTP_USER: z.string().min(1).optional(),
   SMTP_PASS: z.string().min(1).optional(),
-  MAIL_FROM: z.string().default("deplo.ai <no-reply@deplo.in>"),
+  // Gmail SMTP rewrites From to the authenticated account, so the default
+  // matches SMTP_USER rather than an unroutable no-reply alias.
+  MAIL_FROM: z.string().default("deplo.ai <deploai201@gmail.com>"),
   // Inbox that receives in-app feedback and bug reports. Falls back to SMTP_USER.
   FEEDBACK_TO: z.string().email().optional(),
 

@@ -47,6 +47,25 @@ export class AuthController {
     }
   };
 
+  /**
+   * DELETE /auth/me — permanently deletes the account.
+   *
+   * Every user-owned table (repositories, deployments, provider connections,
+   * CLI tokens, uptime samples, analytics) cascades from User, so one delete
+   * removes all of it. Apps already deployed keep running: they live in the
+   * user's own Vercel and Render accounts, which we never touch.
+   */
+  deleteAccount = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.userId!;
+      await this.userRepository.delete(userId);
+      logger.info("Account deleted", { userId });
+      res.status(204).end();
+    } catch (err) {
+      next(err);
+    }
+  };
+
   getCurrentUser = async (
     req: Request,
     res: Response,

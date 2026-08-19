@@ -26,7 +26,7 @@ const footerLinks = [
   {
     group: "Company",
     links: [
-      { label: "About", href: "#" },
+      { label: "About", href: "/docs/getting-started/introduction" },
       { label: "Blog", href: "/blog" },
       { label: "LinkedIn", href: "https://www.linkedin.com/company/deplo-ai" },
       { label: "GitHub", href: "https://github.com/deplolabs" },

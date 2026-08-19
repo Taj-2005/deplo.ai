@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function Faq() {
   return (
     <>
-      <PageTitle lead="Short answers to the questions we get most. If yours isn't here, email support@deplo.in.">
+      <PageTitle lead="Short answers to the questions we get most. If yours isn't here, email deploai201@gmail.com.">
         Frequently Asked Questions
       </PageTitle>
 
@@ -164,7 +164,7 @@ export default function Faq() {
 
       <Callout type="note" title="Still stuck?">
         <P>
-          Email <A href="mailto:support@deplo.in">support@deplo.in</A> — include a deployment ID if it&apos;s about a
+          Email <A href="mailto:deploai201@gmail.com">deploai201@gmail.com</A> — include a deployment ID if it&apos;s about a
           specific deploy.
         </P>
       </Callout>
