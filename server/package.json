@@ -1,7 +1,7 @@
 {
   "name": "deplo-ai-server",
   "version": "0.1.0",
-  "description": "deplo.ai API server — GraphQL + REST, PostgreSQL, Redis",
+  "description": "deplo.ai API server \u2014 GraphQL + REST, PostgreSQL, Redis",
   "private": true,
   "main": "dist/index.js",
   "scripts": {
@@ -93,6 +93,14 @@
     ],
     "setupFiles": [
       "<rootDir>/jest.setup.js"
-    ]
+    ],
+    "coverageThreshold": {
+      "global": {
+        "statements": 37,
+        "branches": 34,
+        "functions": 36,
+        "lines": 37
+      }
+    }
   }
 }
