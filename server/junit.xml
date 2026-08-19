@@ -1,59 +1,173 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="jest tests" tests="25" failures="0" errors="0" time="10.799">
-  <testsuite name="FrameworkDetector" errors="0" failures="0" skipped="0" timestamp="2026-07-14T12:38:44" time="8.833" tests="9">
-    <testcase classname="FrameworkDetector prefers Next.js over React (meta-framework wins)" name="FrameworkDetector prefers Next.js over React (meta-framework wins)" time="0.035">
+<testsuites name="jest tests" tests="74" failures="0" errors="0" time="11.47">
+  <testsuite name="Python backends (Phase 3, slice 1)" errors="0" failures="0" skipped="0" timestamp="2026-08-19T09:01:25" time="6.606" tests="7">
+    <testcase classname="Python backends (Phase 3, slice 1) FastAPI: detects the real app module and variable for uvicorn" name="Python backends (Phase 3, slice 1) FastAPI: detects the real app module and variable for uvicorn" time="0.015">
     </testcase>
-    <testcase classname="FrameworkDetector detects FastAPI from requirements.txt + entrypoint (no package.json)" name="FrameworkDetector detects FastAPI from requirements.txt + entrypoint (no package.json)" time="0.002">
+    <testcase classname="Python backends (Phase 3, slice 1) Flask: unconventional module name (application.py) resolves correctly" name="Python backends (Phase 3, slice 1) Flask: unconventional module name (application.py) resolves correctly" time="0.003">
     </testcase>
-    <testcase classname="StructureAnalyzer treats a Next.js app/ router as a single app, not a monorepo" name="StructureAnalyzer treats a Next.js app/ router as a single app, not a monorepo" time="0.005">
+    <testcase classname="Python backends (Phase 3, slice 1) Django: finds the project wsgi package for gunicorn" name="Python backends (Phase 3, slice 1) Django: finds the project wsgi package for gunicorn" time="0.002">
+    </testcase>
+    <testcase classname="Python backends (Phase 3, slice 1) legacy stack carries python runtime info for the orchestrator" name="Python backends (Phase 3, slice 1) legacy stack carries python runtime info for the orchestrator" time="0.002">
+    </testcase>
+    <testcase classname="Python backends (Phase 3, slice 1) monorepo: python backend in a subdirectory keeps working" name="Python backends (Phase 3, slice 1) monorepo: python backend in a subdirectory keeps working" time="0.004">
+    </testcase>
+    <testcase classname="Go backends (Phase 3, slice 3) cmd/&lt;name&gt; layout builds the right package" name="Go backends (Phase 3, slice 3) cmd/&lt;name&gt; layout builds the right package" time="0.001">
+    </testcase>
+    <testcase classname="Go backends (Phase 3, slice 3) go version flows from go.mod for the runtime" name="Go backends (Phase 3, slice 3) go version flows from go.mod for the runtime" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="email templates" errors="0" failures="0" skipped="0" timestamp="2026-08-19T09:01:25" time="6.692" tests="4">
+    <testcase classname="email templates failure email carries cause, file, fix, AI prompt, link — issues sorted by severity" name="email templates failure email carries cause, file, fix, AI prompt, link — issues sorted by severity" time="0.032">
+    </testcase>
+    <testcase classname="email templates failure email degrades gracefully without a diagnosis" name="email templates failure email degrades gracefully without a diagnosis" time="0">
+    </testcase>
+    <testcase classname="email templates success email lists live URLs" name="email templates success email lists live URLs" time="0.001">
+    </testcase>
+    <testcase classname="email templates awaiting-env email lists the missing keys" name="email templates awaiting-env email lists the missing keys" time="0.002">
+    </testcase>
+  </testsuite>
+  <testsuite name="extractEnvRefs" errors="0" failures="0" skipped="0" timestamp="2026-08-19T09:01:25" time="6.701" tests="7">
+    <testcase classname="extractEnvRefs finds dot, bracket, destructured, import.meta and python refs" name="extractEnvRefs finds dot, bracket, destructured, import.meta and python refs" time="0.06">
+    </testcase>
+    <testcase classname="EnvVarScanner finds vars in ANY source file — no fixed filename list, no .env.example needed" name="EnvVarScanner finds vars in ANY source file — no fixed filename list, no .env.example needed" time="0.089">
+    </testcase>
+    <testcase classname="EnvVarScanner scopes vars by component directory and marks cross-side vars shared" name="EnvVarScanner scopes vars by component directory and marks cross-side vars shared" time="0.001">
+    </testcase>
+    <testcase classname="EnvVarScanner detects frontend backend-URL keys for auto-injection instead of asking the user" name="EnvVarScanner detects frontend backend-URL keys for auto-injection instead of asking the user" time="0.001">
+    </testcase>
+    <testcase classname="EnvVarScanner takes defaults from example env files but never values from real .env files" name="EnvVarScanner takes defaults from example env files but never values from real .env files" time="0.002">
+    </testcase>
+    <testcase classname="EnvVarScanner excludes platform-managed vars and skips node_modules/dist/test files" name="EnvVarScanner excludes platform-managed vars and skips node_modules/dist/test files" time="0.001">
+    </testcase>
+    <testcase classname="EnvVarScanner framework defaults cover the wiring key even when code doesn&apos;t reference it yet" name="EnvVarScanner framework defaults cover the wiring key even when code doesn&apos;t reference it yet" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="FrameworkDetector" errors="0" failures="0" skipped="0" timestamp="2026-08-19T09:01:25" time="6.832" tests="9">
+    <testcase classname="FrameworkDetector prefers Next.js over React (meta-framework wins)" name="FrameworkDetector prefers Next.js over React (meta-framework wins)" time="0.015">
+    </testcase>
+    <testcase classname="FrameworkDetector detects FastAPI from requirements.txt + entrypoint (no package.json)" name="FrameworkDetector detects FastAPI from requirements.txt + entrypoint (no package.json)" time="0.001">
+    </testcase>
+    <testcase classname="StructureAnalyzer treats a Next.js app/ router as a single app, not a monorepo" name="StructureAnalyzer treats a Next.js app/ router as a single app, not a monorepo" time="0.003">
     </testcase>
     <testcase classname="StructureAnalyzer detects a pnpm workspace monorepo and resolves package globs" name="StructureAnalyzer detects a pnpm workspace monorepo and resolves package globs" time="0.002">
     </testcase>
     <testcase classname="StructureAnalyzer detects a classic frontend/backend split" name="StructureAnalyzer detects a classic frontend/backend split" time="0.001">
     </testcase>
-    <testcase classname="RepositoryAnalyzer (end-to-end) maps a Vite+React SPA to the legacy REACT_VITE stack" name="RepositoryAnalyzer (end-to-end) maps a Vite+React SPA to the legacy REACT_VITE stack" time="0.011">
+    <testcase classname="RepositoryAnalyzer (end-to-end) maps a Vite+React SPA to the legacy REACT_VITE stack" name="RepositoryAnalyzer (end-to-end) maps a Vite+React SPA to the legacy REACT_VITE stack" time="0.006">
     </testcase>
     <testcase classname="RepositoryAnalyzer (end-to-end) analyzes a pnpm monorepo into frontend + backend components" name="RepositoryAnalyzer (end-to-end) analyzes a pnpm monorepo into frontend + backend components" time="0.003">
     </testcase>
-    <testcase classname="RepositoryAnalyzer (end-to-end) detects a Go backend with the right build/start plan (not yet deployable)" name="RepositoryAnalyzer (end-to-end) detects a Go backend with the right build/start plan (not yet deployable)" time="0.001">
+    <testcase classname="RepositoryAnalyzer (end-to-end) detects a Go backend with the right build/start plan (deployable)" name="RepositoryAnalyzer (end-to-end) detects a Go backend with the right build/start plan (deployable)" time="0.045">
     </testcase>
-    <testcase classname="RepositoryAnalyzer (end-to-end) flags AI fallback when nothing is confidently detected" name="RepositoryAnalyzer (end-to-end) flags AI fallback when nothing is confidently detected" time="0.002">
+    <testcase classname="RepositoryAnalyzer (end-to-end) flags AI fallback when nothing is confidently detected" name="RepositoryAnalyzer (end-to-end) flags AI fallback when nothing is confidently detected" time="0.001">
     </testcase>
   </testsuite>
-  <testsuite name="IntegrationService — Render" errors="0" failures="0" skipped="0" timestamp="2026-07-14T12:38:44" time="9.366" tests="6">
-    <testcase classname="IntegrationService — Render rejects malformed keys without calling the API or storing anything" name="IntegrationService — Render rejects malformed keys without calling the API or storing anything" time="0.034">
+  <testsuite name="CliTokenService" errors="0" failures="0" skipped="0" timestamp="2026-08-19T09:01:32" time="0.169" tests="5">
+    <testcase classname="CliTokenService creates a dpl_-prefixed token and stores only its SHA-256 hash" name="CliTokenService creates a dpl_-prefixed token and stores only its SHA-256 hash" time="0.042">
     </testcase>
-    <testcase classname="IntegrationService — Render rejects keys the Render API refuses — nothing stored" name="IntegrationService — Render rejects keys the Render API refuses — nothing stored" time="0.002">
+    <testcase classname="CliTokenService rejects an empty token name" name="CliTokenService rejects an empty token name" time="0.002">
     </testcase>
-    <testcase classname="IntegrationService — Render validates, encrypts, and stores a good key (team workspace)" name="IntegrationService — Render validates, encrypts, and stores a good key (team workspace)" time="0.019">
+    <testcase classname="CliTokenService authenticates a valid token and stamps lastUsedAt" name="CliTokenService authenticates a valid token and stamps lastUsedAt" time="0.003">
     </testcase>
-    <testcase classname="IntegrationService — Render prefers the personal workspace when both exist" name="IntegrationService — Render prefers the personal workspace when both exist" time="0.002">
+    <testcase classname="CliTokenService returns null for an unknown token" name="CliTokenService returns null for an unknown token" time="0.001">
+    </testcase>
+    <testcase classname="CliTokenService refuses to revoke a token owned by another user" name="CliTokenService refuses to revoke a token owned by another user" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="Frontend presets (Phase 3, slice 2)" errors="0" failures="0" skipped="0" timestamp="2026-08-19T09:01:25" time="7.044" tests="7">
+    <testcase classname="Frontend presets (Phase 3, slice 2) Nuxt: deployable via Vercel preset &quot;nuxtjs&quot;" name="Frontend presets (Phase 3, slice 2) Nuxt: deployable via Vercel preset &quot;nuxtjs&quot;" time="0.075">
+    </testcase>
+    <testcase classname="Frontend presets (Phase 3, slice 2) SvelteKit (modern preset slug): deployable via Vercel preset &quot;sveltekit-1&quot;" name="Frontend presets (Phase 3, slice 2) SvelteKit (modern preset slug): deployable via Vercel preset &quot;sveltekit-1&quot;" time="0.054">
+    </testcase>
+    <testcase classname="Frontend presets (Phase 3, slice 2) Astro: deployable via Vercel preset &quot;astro&quot;" name="Frontend presets (Phase 3, slice 2) Astro: deployable via Vercel preset &quot;astro&quot;" time="0.004">
+    </testcase>
+    <testcase classname="Frontend presets (Phase 3, slice 2) Angular: deployable via Vercel preset &quot;angular&quot;" name="Frontend presets (Phase 3, slice 2) Angular: deployable via Vercel preset &quot;angular&quot;" time="0.001">
+    </testcase>
+    <testcase classname="Frontend presets (Phase 3, slice 2) Gatsby: deployable via Vercel preset &quot;gatsby&quot;" name="Frontend presets (Phase 3, slice 2) Gatsby: deployable via Vercel preset &quot;gatsby&quot;" time="0.002">
+    </testcase>
+    <testcase classname="Frontend presets (Phase 3, slice 2) static HTML site is deployable with no preset" name="Frontend presets (Phase 3, slice 2) static HTML site is deployable with no preset" time="0.002">
+    </testcase>
+    <testcase classname="Frontend presets (Phase 3, slice 2) framework-default API keys cover the new frontends" name="Frontend presets (Phase 3, slice 2) framework-default API keys cover the new frontends" time="0.069">
+    </testcase>
+  </testsuite>
+  <testsuite name="GroqClient token failover" errors="0" failures="0" skipped="0" timestamp="2026-08-19T09:01:25" time="8.717" tests="10">
+    <testcase classname="GroqClient token failover falls back to the second key when the first is rejected" name="GroqClient token failover falls back to the second key when the first is rejected" time="0.019">
+    </testcase>
+    <testcase classname="GroqClient token failover throws after all keys fail — bounded, one try per key" name="GroqClient token failover throws after all keys fail — bounded, one try per key" time="0.017">
+    </testcase>
+    <testcase classname="GroqClient token failover requires at least one token" name="GroqClient token failover requires at least one token" time="0.002">
+    </testcase>
+    <testcase classname="normalization maps free-text framework names onto FrameworkId" name="normalization maps free-text framework names onto FrameworkId" time="0.001">
+    </testcase>
+    <testcase classname="normalization maps languages" name="normalization maps languages" time="0.001">
+    </testcase>
+    <testcase classname="GroqReasoningService merge adopts the AI result when deterministic confidence is lower" name="GroqReasoningService merge adopts the AI result when deterministic confidence is lower" time="0.034">
+    </testcase>
+    <testcase classname="GroqReasoningService merge keeps the deterministic result when the LLM call fails" name="GroqReasoningService merge keeps the deterministic result when the LLM call fails" time="0.002">
+    </testcase>
+    <testcase classname="GroqReasoningService merge does not let a less-confident AI overwrite a confident deterministic result" name="GroqReasoningService merge does not let a less-confident AI overwrite a confident deterministic result" time="0.002">
+    </testcase>
+    <testcase classname="GroqReasoningService merge produces a legacy stack from AI-corrected analysis" name="GroqReasoningService merge produces a legacy stack from AI-corrected analysis" time="0.006">
+    </testcase>
+    <testcase classname="GroqReasoningService merge returns a structured failure diagnosis" name="GroqReasoningService merge returns a structured failure diagnosis" time="0.002">
+    </testcase>
+  </testsuite>
+  <testsuite name="IntegrationService — Render" errors="0" failures="0" skipped="0" timestamp="2026-08-19T09:01:25" time="8.826" tests="6">
+    <testcase classname="IntegrationService — Render rejects malformed keys without calling the API or storing anything" name="IntegrationService — Render rejects malformed keys without calling the API or storing anything" time="0.046">
+    </testcase>
+    <testcase classname="IntegrationService — Render rejects keys the Render API refuses — nothing stored" name="IntegrationService — Render rejects keys the Render API refuses — nothing stored" time="0.001">
+    </testcase>
+    <testcase classname="IntegrationService — Render validates, encrypts, and stores a good key (team workspace)" name="IntegrationService — Render validates, encrypts, and stores a good key (team workspace)" time="0.006">
+    </testcase>
+    <testcase classname="IntegrationService — Render prefers the personal workspace when both exist" name="IntegrationService — Render prefers the personal workspace when both exist" time="0.001">
     </testcase>
     <testcase classname="IntegrationService — Render resolves decrypted per-user credentials for the deployment engine" name="IntegrationService — Render resolves decrypted per-user credentials for the deployment engine" time="0.001">
     </testcase>
     <testcase classname="IntegrationService — Render throws a clear error when Render is not connected" name="IntegrationService — Render throws a clear error when Render is not connected" time="0.001">
     </testcase>
   </testsuite>
-  <testsuite name="GroqClient token failover" errors="0" failures="0" skipped="0" timestamp="2026-07-14T12:38:44" time="9.404" tests="10">
-    <testcase classname="GroqClient token failover falls back to the second key when the first is rejected" name="GroqClient token failover falls back to the second key when the first is rejected" time="0.023">
+  <testsuite name="AuthController.deleteAccount" errors="0" failures="0" skipped="0" timestamp="2026-08-19T09:01:32" time="1.859" tests="3">
+    <testcase classname="AuthController.deleteAccount deletes the authenticated user and returns 204" name="AuthController.deleteAccount deletes the authenticated user and returns 204" time="0.007">
     </testcase>
-    <testcase classname="GroqClient token failover throws after all keys fail — bounded, one try per key" name="GroqClient token failover throws after all keys fail — bounded, one try per key" time="0.019">
+    <testcase classname="AuthController.deleteAccount never deletes an id other than the caller&apos;s" name="AuthController.deleteAccount never deletes an id other than the caller&apos;s" time="0.007">
     </testcase>
-    <testcase classname="GroqClient token failover requires at least one token" name="GroqClient token failover requires at least one token" time="0.005">
+    <testcase classname="AuthController.deleteAccount forwards failures to the error middleware instead of reporting success" name="AuthController.deleteAccount forwards failures to the error middleware instead of reporting success" time="0.001">
     </testcase>
-    <testcase classname="normalization maps free-text framework names onto FrameworkId" name="normalization maps free-text framework names onto FrameworkId" time="0.001">
+  </testsuite>
+  <testsuite name="DeploymentOrchestrator — analysis" errors="0" failures="0" skipped="0" timestamp="2026-08-19T09:01:32" time="2.088" tests="6">
+    <testcase classname="DeploymentOrchestrator — analysis moves straight to deploying when nothing is required" name="DeploymentOrchestrator — analysis moves straight to deploying when nothing is required" time="0.005">
     </testcase>
-    <testcase classname="normalization maps languages" name="normalization maps languages" time="0.001">
+    <testcase classname="DeploymentOrchestrator — analysis parks the deployment when a required variable has no value" name="DeploymentOrchestrator — analysis parks the deployment when a required variable has no value" time="0.004">
     </testcase>
-    <testcase classname="GroqReasoningService merge adopts the AI result when deterministic confidence is lower" name="GroqReasoningService merge adopts the AI result when deterministic confidence is lower" time="0.01">
+    <testcase classname="DeploymentOrchestrator — analysis treats a value supplied up front as satisfying a required variable" name="DeploymentOrchestrator — analysis treats a value supplied up front as satisfying a required variable" time="0.002">
     </testcase>
-    <testcase classname="GroqReasoningService merge keeps the deterministic result when the LLM call fails" name="GroqReasoningService merge keeps the deterministic result when the LLM call fails" time="0.004">
+    <testcase classname="DeploymentOrchestrator — analysis records the detected stack so later phases and the UI can read it" name="DeploymentOrchestrator — analysis records the detected stack so later phases and the UI can read it" time="0">
     </testcase>
-    <testcase classname="GroqReasoningService merge does not let a less-confident AI overwrite a confident deterministic result" name="GroqReasoningService merge does not let a less-confident AI overwrite a confident deterministic result" time="0.021">
+    <testcase classname="DeploymentOrchestrator — analysis marks the deployment FAILED and notifies when analysis throws" name="DeploymentOrchestrator — analysis marks the deployment FAILED and notifies when analysis throws" time="0.019">
     </testcase>
-    <testcase classname="GroqReasoningService merge produces a legacy stack from AI-corrected analysis" name="GroqReasoningService merge produces a legacy stack from AI-corrected analysis" time="0.004">
+    <testcase classname="DeploymentOrchestrator — analysis rejects an unknown deployment id instead of proceeding" name="DeploymentOrchestrator — analysis rejects an unknown deployment id instead of proceeding" time="0.028">
     </testcase>
-    <testcase classname="GroqReasoningService merge returns a structured failure diagnosis" name="GroqReasoningService merge returns a structured failure diagnosis" time="0.001">
+  </testsuite>
+  <testsuite name="DeploymentService — access control" errors="0" failures="0" skipped="0" timestamp="2026-08-19T09:01:32" time="2.124" tests="10">
+    <testcase classname="DeploymentService — access control returns the deployment to its owner" name="DeploymentService — access control returns the deployment to its owner" time="0.005">
+    </testcase>
+    <testcase classname="DeploymentService — access control refuses to hand another user&apos;s deployment over" name="DeploymentService — access control refuses to hand another user&apos;s deployment over" time="0.002">
+    </testcase>
+    <testcase classname="DeploymentService — access control does not serve a cached deployment to a different user" name="DeploymentService — access control does not serve a cached deployment to a different user" time="0.001">
+    </testcase>
+    <testcase classname="DeploymentService — access control reports a missing deployment as not found" name="DeploymentService — access control reports a missing deployment as not found" time="0.001">
+    </testcase>
+    <testcase classname="DeploymentService — access control never caches a finished deployment" name="DeploymentService — access control never caches a finished deployment" time="0.001">
+    </testcase>
+    <testcase classname="DeploymentService — state guards cancels a running deployment" name="DeploymentService — state guards cancels a running deployment" time="0.002">
+    </testcase>
+    <testcase classname="DeploymentService — state guards refuses to cancel a deployment that already finished" name="DeploymentService — state guards refuses to cancel a deployment that already finished" time="0.004">
+    </testcase>
+    <testcase classname="DeploymentService — state guards refuses cancellation by a non-owner" name="DeploymentService — state guards refuses cancellation by a non-owner" time="0.001">
+    </testcase>
+    <testcase classname="DeploymentService — state guards only accepts env variables while the deployment is waiting for them" name="DeploymentService — state guards only accepts env variables while the deployment is waiting for them" time="0.001">
+    </testcase>
+    <testcase classname="DeploymentService — state guards refuses env variables from a non-owner" name="DeploymentService — state guards refuses env variables from a non-owner" time="0.001">
     </testcase>
   </testsuite>
 </testsuites>

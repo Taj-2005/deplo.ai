@@ -7,12 +7,7 @@ import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
-import { ApolloServer } from "@apollo/server";
-import { expressMiddleware } from "@apollo/server/express4";
 
-import { typeDefs } from "./interfaces/graphql/schema/typeDefs";
-import { resolvers } from "./interfaces/graphql/resolvers/index";
-import { buildContext } from "./interfaces/graphql/context/context";
 import { errorMiddleware } from "./interfaces/http/middleware/error.middleware";
 import { setupSwagger } from "./interfaces/swagger/swagger";
 
@@ -157,27 +152,6 @@ async function bootstrap(): Promise<void> {
   });
   app.use(limiter);
 
-  // ── GraphQL ───────────────────────────────────────────────────────────────
-  const apollo = new ApolloServer({ typeDefs, resolvers });
-  await apollo.start();
-
-  const graphqlServices = {
-    prisma,
-    userRepository,
-    deploymentRepository,
-    authService,
-    deploymentService,
-    repositoryService,
-    cache,
-  };
-
-  app.use(
-    "/graphql",
-    expressMiddleware(apollo, {
-      context: async ({ req }) => buildContext(req, graphqlServices),
-    }),
-  );
-
   // ── REST API ──────────────────────────────────────────────────────────────
   const api = express.Router();
   const cliTokenService = new CliTokenService(prisma);
@@ -266,7 +240,6 @@ async function bootstrap(): Promise<void> {
   // ── Start ─────────────────────────────────────────────────────────────────
   const server = app.listen(env.PORT, () => {
     logger.info(`Server running on http://localhost:${env.PORT}`);
-    logger.info(`GraphQL:  http://localhost:${env.PORT}/graphql`);
     logger.info(`REST:     http://localhost:${env.PORT}/api/${env.API_VERSION}`);
     if (docsMounted) {
       logger.info(`API Docs: http://localhost:${env.PORT}/docs`);
