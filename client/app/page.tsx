@@ -10,6 +10,7 @@ import { Trust } from "@/components/landing/Trust";
 import { FAQ } from "@/components/landing/FAQ";
 import { FinalCTA } from "@/components/landing/FinalCTA";
 import { Footer } from "@/components/landing/Footer";
+import { FeedbackWidget } from "@/components/dashboard/FeedbackWidget";
 
 export default function Home() {
   return (
@@ -28,6 +29,11 @@ export default function Home() {
         <FinalCTA />
       </main>
       <Footer />
+      {/* Light-locked: the landing page is white-only, so the shared widget
+          must not follow a dark theme preference here. */}
+      <div className="ds-light-only">
+        <FeedbackWidget />
+      </div>
     </>
   );
 }
