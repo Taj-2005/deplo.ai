@@ -265,6 +265,20 @@ export async function sendFeedback(payload: FeedbackPayload): Promise<void> {
   });
 }
 
+/**
+ * Feedback from a visitor with no account (landing page). Identity can't come
+ * from a session here, so the email is supplied and used only for Reply-To.
+ * `company` is a honeypot the server checks — it must stay empty.
+ */
+export async function sendPublicFeedback(
+  payload: FeedbackPayload & { email: string; name?: string; company?: string },
+): Promise<void> {
+  await apiFetch<{ received: boolean }>("/public/feedback", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 // ─── CLI tokens ───────────────────────────────────────────────────────────────
 
 export interface CliTokenInfo {

@@ -5,16 +5,21 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bug, Check, Lightbulb, MessageSquare, MessageSquarePlus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { sendFeedback, type FeedbackType } from "@/lib/dashboard-api";
+import { sendFeedback, sendPublicFeedback, type FeedbackType } from "@/lib/dashboard-api";
 import { APP_VERSION } from "@/lib/version";
 
 /**
- * Floating feedback launcher (bottom-right, dashboard only).
+ * Floating feedback launcher (bottom-right), used on the dashboard and the
+ * landing page.
  *
  * Reporting friction is the enemy: the form is two fields, and every piece of
  * reproduction context — page, viewport, user agent, deployment id — is
- * captured automatically rather than asked for. Identity comes from the
- * session server-side, so the reply lands with the right person.
+ * captured automatically rather than asked for.
+ *
+ * Signed in, identity comes from the session server-side, so the reply always
+ * reaches the right person. Anonymous visitors supply an email instead, which
+ * is used only for Reply-To — never trusted as identity — and that path is
+ * defended by a honeypot field plus a per-IP rate limit on the server.
  */
 
 const TYPES: { key: FeedbackType; label: string; icon: typeof Bug; hint: string }[] = [
@@ -33,6 +38,10 @@ export function FeedbackWidget() {
   const [type, setType] = useState<FeedbackType>("BUG");
   const [message, setMessage] = useState("");
   const [steps, setSteps] = useState("");
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  // Honeypot: hidden from people, irresistible to bots. Server rejects if set.
+  const [company, setCompany] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +65,9 @@ export function FeedbackWidget() {
   const reset = useCallback(() => {
     setMessage("");
     setSteps("");
+    setEmail("");
+    setName("");
+    setCompany("");
     setError(null);
     setSent(false);
   }, []);
@@ -68,10 +80,14 @@ export function FeedbackWidget() {
 
   const submit = async () => {
     if (message.trim().length < MIN_LENGTH || sending) return;
+    if (!isAuthenticated && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) {
+      setError("Please enter an email address so we can reply.");
+      return;
+    }
     setSending(true);
     setError(null);
     try {
-      await sendFeedback({
+      const payload = {
         type,
         message: message.trim(),
         ...(type === "BUG" && steps.trim() ? { steps: steps.trim() } : {}),
@@ -86,7 +102,15 @@ export function FeedbackWidget() {
             ? { deploymentId: pathname.split("/").pop() as string }
             : {}),
         },
-      });
+      };
+
+      // Signed in: identity comes from the session. Anonymous: the visitor
+      // supplies an email, used only so we can reply.
+      if (isAuthenticated) {
+        await sendFeedback(payload);
+      } else {
+        await sendPublicFeedback({ ...payload, email: email.trim(), name: name.trim(), company });
+      }
       setSent(true);
       setTimeout(close, 2600);
     } catch (err) {
@@ -95,10 +119,6 @@ export function FeedbackWidget() {
       setSending(false);
     }
   };
-
-  // Signed-out visitors have no identity to attach; the landing page has its
-  // own contact route.
-  if (!isAuthenticated) return null;
 
   const tooShort = message.trim().length > 0 && message.trim().length < MIN_LENGTH;
 
@@ -145,7 +165,7 @@ export function FeedbackWidget() {
                 <p className="text-[14px] font-semibold text-ds-on-surface">Thank you — that helps.</p>
                 <p className="mt-1 text-[13px] leading-relaxed text-ds-on-variant">
                   It landed in our inbox with everything needed to reproduce it. We reply to{" "}
-                  <span className="font-mono">{user?.email}</span>.
+                  <span className="font-mono">{isAuthenticated ? user?.email : email}</span>.
                 </p>
               </div>
             ) : (
@@ -182,6 +202,41 @@ export function FeedbackWidget() {
                   {TYPES.find((t) => t.key === type)?.hint}
                 </p>
 
+                {/* Identity — only asked for when there's no session to read it from */}
+                {!isAuthenticated && (
+                  <div className="mt-3 grid grid-cols-2 gap-1.5">
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Name (optional)"
+                      maxLength={120}
+                      className="border border-ds-outline-variant bg-ds-surface-low px-3 py-2 text-[13px] text-ds-on-surface placeholder:text-ds-outline focus:outline-none focus:border-ds-primary transition-colors"
+                    />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Email"
+                      required
+                      maxLength={254}
+                      className="border border-ds-outline-variant bg-ds-surface-low px-3 py-2 text-[13px] text-ds-on-surface placeholder:text-ds-outline focus:outline-none focus:border-ds-primary transition-colors"
+                    />
+                  </div>
+                )}
+
+                {/* Honeypot — hidden from people and screen readers alike */}
+                <input
+                  type="text"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  name="company"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden="true"
+                  className="absolute left-[-9999px] h-0 w-0 opacity-0"
+                />
+
                 {/* Message */}
                 <textarea
                   ref={textareaRef}
@@ -217,12 +272,18 @@ export function FeedbackWidget() {
 
                 <div className="mt-3 flex items-center justify-between gap-3">
                   <p className="text-[11px] leading-snug text-ds-on-variant">
-                    Sent as <span className="font-mono">{user?.email}</span> with this page&apos;s technical
-                    details attached.
+                    {isAuthenticated ? (
+                      <>
+                        Sent as <span className="font-mono">{user?.email}</span> with this page&apos;s
+                        technical details attached.
+                      </>
+                    ) : (
+                      <>We&apos;ll only use your email to reply.</>
+                    )}
                   </p>
                   <button
                     onClick={submit}
-                    disabled={message.trim().length < MIN_LENGTH || sending}
+                    disabled={message.trim().length < MIN_LENGTH || sending || (!isAuthenticated && !email.trim())}
                     className="shrink-0 bg-ds-primary px-4 py-2 text-[13px] font-semibold text-ds-on-primary hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
                   >
                     {sending ? "Sending…" : "Send"}

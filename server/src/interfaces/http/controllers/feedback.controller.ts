@@ -22,6 +22,17 @@ const FeedbackSchema = z.object({
 });
 
 /**
+ * Public submissions carry their own identity, so the fields the session
+ * normally supplies are required here — and `company` is a honeypot: a real
+ * person never sees it, so anything filling it in is a bot.
+ */
+const PublicFeedbackSchema = FeedbackSchema.extend({
+  name: z.string().trim().max(120).optional(),
+  email: z.string().trim().email().max(254),
+  company: z.string().max(0).optional(),
+});
+
+/**
  * POST /feedback — in-app feedback and bug reports (authenticated).
  *
  * Identity comes from the session, never the request body, so reports are
@@ -72,6 +83,57 @@ export class FeedbackController {
     });
 
     logger.info("Feedback submitted", { userId: user.id, type: parsed.data.type, path: parsed.data.context.path });
+    res.status(202).json({ received: true });
+  };
+
+  /**
+   * POST /public/feedback — feedback from the marketing site (no account).
+   *
+   * Unauthenticated mail-sending is a spam vector, so this is defended three
+   * ways: a per-IP rate limit at the route, a honeypot field, and a required
+   * well-formed email. The address is unverified, so it is used for Reply-To
+   * and shown in the body — never trusted as identity.
+   */
+  submitPublic = async (req: Request, res: Response): Promise<void> => {
+    const parsed = PublicFeedbackSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: { message: "Invalid feedback", details: parsed.error.flatten() } });
+      return;
+    }
+
+    // Honeypot tripped — answer as though it worked so bots learn nothing.
+    if (parsed.data.company) {
+      logger.debug("Public feedback honeypot tripped");
+      res.status(202).json({ received: true });
+      return;
+    }
+
+    const recipient = env.FEEDBACK_TO ?? env.SMTP_USER;
+    if (!this.mailer.isConfigured() || !recipient) {
+      logger.warn("Public feedback received but mail is not configured");
+      throw AppError.internal("Feedback can't be delivered right now — please email deploai201@gmail.com");
+    }
+
+    const name = parsed.data.name?.trim() || parsed.data.email.split("@")[0] || "Visitor";
+    const mail = buildFeedbackEmail({
+      appUrl: env.ALLOWED_ORIGINS[0] ?? "https://www.deplo.in",
+      type: parsed.data.type as FeedbackType,
+      message: parsed.data.message,
+      steps: parsed.data.steps,
+      context: parsed.data.context,
+      // Marked plainly so a visitor is never mistaken for a signed-in user.
+      user: { id: "visitor (not signed in)", name, email: parsed.data.email, githubLogin: "—" },
+    });
+
+    await this.mailer.send({
+      to: recipient,
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text,
+      replyTo: `${name} <${parsed.data.email}>`,
+    });
+
+    logger.info("Public feedback submitted", { type: parsed.data.type, path: parsed.data.context.path });
     res.status(202).json({ received: true });
   };
 }

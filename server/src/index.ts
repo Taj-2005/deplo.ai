@@ -190,6 +190,18 @@ async function bootstrap(): Promise<void> {
   api.get("/public/stats", asyncHandler(statsController.publicStats));
 
   // Webhooks — no user auth (signature validation inside controllers)
+  // Unauthenticated mail-sending needs a much tighter budget than the global
+  // 200/15min: five submissions per hour per IP is generous for a human and
+  // useless for a spammer.
+  const feedbackLimiter = rateLimit({
+    windowMs: 60 * 60 * 1_000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: { message: "Too many submissions — please try again later." } },
+  });
+  api.post("/public/feedback", feedbackLimiter, asyncHandler(feedbackController.submitPublic));
+
   api.get("/public/insights.js", monitoringController.script);
   api.get("/public/insights/:repoId", asyncHandler(monitoringController.ingest));
   api.post("/public/insights/:repoId", asyncHandler(monitoringController.ingest));

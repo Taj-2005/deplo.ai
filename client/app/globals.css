@@ -328,3 +328,23 @@ body {
 }
 .prose-page pre code { background: none; border: 0; padding: 0; font-size: inherit; }
 .prose-page hr { border: 0; border-top: 1px solid #e2e8f0; margin: 2.5rem 0; }
+
+/* Pins the dashboard tokens to their light values.
+   The landing page is light-only (hardcoded white surfaces), so a shared
+   component rendered there must not follow the user's dark theme preference. */
+.ds-light-only {
+  --ds-bg:               #f6fafe;
+  --ds-surface:          #ffffff;
+  --ds-surface-low:      #f0f4f8;
+  --ds-surface-mid:      #eaeef2;
+  --ds-surface-high:     #e4e9ed;
+  --ds-surface-highest:  #dfe3e7;
+  --ds-on-surface:       #171c1f;
+  --ds-on-variant:       #4c4546;
+  --ds-outline:          #7e7576;
+  --ds-outline-variant:  #cfc4c5;
+  --ds-primary:          #000000;
+  --ds-on-primary:       #ffffff;
+  --ds-primary-dim:      #1b1b1b;
+  --ds-on-primary-dim:   #848484;
+}
