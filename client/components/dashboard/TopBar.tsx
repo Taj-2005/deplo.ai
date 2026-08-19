@@ -1,13 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { Sun, Moon, Bell, Search } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { UserAvatar } from "./UserAvatar";
 import { useTheme } from "@/components/providers/ThemeProvider";
 
 export function TopBar() {
   const { user } = useAuth();
   const { resolvedTheme, toggle } = useTheme();
-  const initials = user?.email ? user.email.slice(0, 2).toUpperCase() : "??";
 
   return (
     <header className="sticky top-0 z-40 flex justify-between items-center w-full h-16 px-6 bg-ds-bg/80 backdrop-blur-md border-b border-ds-outline-variant">
@@ -51,14 +52,14 @@ export function TopBar() {
 
         <div className="h-8 w-px bg-ds-outline-variant mx-2" />
 
-        <div
-          className="w-8 h-8 bg-ds-primary-dim flex items-center justify-center shrink-0"
-          title={user?.email}
+        <Link
+          href="/dashboard/settings"
+          title={user?.githubLogin ? `@${user.githubLogin} — account settings` : "Account settings"}
+          aria-label="Account settings"
+          className="shrink-0 hover:opacity-80 transition-opacity"
         >
-          <span className="text-[10px] font-mono text-ds-on-primary-dim select-none">
-            {initials}
-          </span>
-        </div>
+          <UserAvatar avatarUrl={user?.avatarUrl} name={user?.name ?? user?.email} size={32} />
+        </Link>
       </div>
     </header>
   );

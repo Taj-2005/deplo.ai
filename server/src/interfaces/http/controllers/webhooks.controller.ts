@@ -7,6 +7,8 @@ import type { DeploymentJobData, DeploymentJobName } from "../../../infrastructu
 import { enqueueAnalysis, enqueueDeploy } from "../../../infrastructure/queue/DeploymentQueue";
 import { env } from "../../../config/env";
 import { logger } from "../../../shared/logger/logger";
+import type { CacheService } from "../../../infrastructure/redis/CacheService";
+import { analysisCacheKey } from "../../../application/services/AnalysisService";
 import crypto from "crypto";
 
 export class WebhooksController {
@@ -15,6 +17,8 @@ export class WebhooksController {
     private readonly repositoryRepository: IRepositoryRepository,
     private readonly queue: Queue<DeploymentJobData, void, DeploymentJobName>,
     private readonly integrationService: IntegrationService,
+    /** Optional — used to drop the cached analysis when the repo changes. */
+    private readonly cache: CacheService | null = null,
   ) {}
 
   /**
@@ -158,6 +162,13 @@ export class WebhooksController {
 
     const branch = ref.replace(/^refs\/heads\//, "");
     logger.info("GitHub push webhook received", { fullName, branch });
+
+    // The repo just changed, so any cached analysis for this ref is stale.
+    // Dropping it here is what makes the cache safe to serve elsewhere.
+    if (this.cache) {
+      await this.cache.del(analysisCacheKey(fullName, branch));
+      await this.cache.del(analysisCacheKey(fullName, "HEAD"));
+    }
 
     const repository = await this.repositoryRepository.findByFullName(fullName);
     if (!repository) {

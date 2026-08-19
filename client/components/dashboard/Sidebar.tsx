@@ -15,6 +15,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { UserAvatar } from "./UserAvatar";
 
 const NAV_ITEMS = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Overview", exact: true },
@@ -119,10 +120,15 @@ export function Sidebar() {
           title={user?.email ?? "Sign out"}
           className="flex items-center gap-3 px-2.5 py-2.5 text-ds-on-variant hover:bg-ds-surface-highest hover:text-ds-on-surface transition-colors w-full text-left"
         >
-          <LogOut size={18} strokeWidth={1.5} className="shrink-0" />
+          <UserAvatar avatarUrl={user?.avatarUrl} name={user?.name ?? user?.email} size={18} />
           <span className="text-[13px] font-mono font-medium whitespace-nowrap overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-150 delay-75">
-            {user?.email ? user.email.split("@")[0] : "Sign out"}
+            {user?.githubLogin ?? (user?.email ? user.email.split("@")[0] : "Sign out")}
           </span>
+          <LogOut
+            size={14}
+            strokeWidth={1.5}
+            className="ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 delay-75"
+          />
         </button>
       </div>
     </aside>

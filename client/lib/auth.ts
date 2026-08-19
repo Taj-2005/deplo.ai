@@ -54,10 +54,40 @@ export function isTokenValid(token: string): boolean {
   return decoded.exp * 1000 > Date.now();
 }
 
-export function getGithubAuthUrl(): string {
+export function getGithubAuthUrl(forceAccountPicker = false): string {
   // Same-origin — the Next.js rewrite proxies this to the backend, which
   // 302-redirects the browser to GitHub. Keeps the user on the frontend domain.
-  return `${getApiBaseUrl()}/api/v1/auth/github`;
+  const base = `${getApiBaseUrl()}/api/v1/auth/github`;
+  return forceAccountPicker ? `${base}?prompt=select_account` : base;
+}
+
+const SIGNED_OUT_KEY = "deplo_signed_out";
+
+/**
+ * Remember that the user signed out deliberately.
+ *
+ * GitHub re-authorizes silently when the app is already approved and the
+ * github.com session is alive, so the next sign-in would drop them back into
+ * the account they just left without a single prompt. This flag makes that one
+ * sign-in force GitHub's account picker instead.
+ */
+export function markSignedOut(): void {
+  try {
+    localStorage.setItem(SIGNED_OUT_KEY, "1");
+  } catch {
+    // Private mode with storage denied — the picker just won't be forced.
+  }
+}
+
+/** Reads and clears the flag: the picker is forced once, not forever. */
+export function consumeSignedOut(): boolean {
+  try {
+    const had = localStorage.getItem(SIGNED_OUT_KEY) === "1";
+    if (had) localStorage.removeItem(SIGNED_OUT_KEY);
+    return had;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -71,17 +101,30 @@ export function getGithubAuthUrl(): string {
  * and 5xx — including a cold-starting Render backend — and must NOT sign the
  * user out, or every slow start would eject them.
  */
-export async function verifySession(token: string): Promise<"valid" | "invalid" | "unknown"> {
+export interface ServerProfile {
+  userId: string;
+  email: string;
+  name: string;
+  githubLogin: string;
+  avatarUrl: string | null;
+}
+
+export async function verifySession(
+  token: string,
+): Promise<{ status: "valid" | "invalid" | "unknown"; profile?: ServerProfile }> {
   try {
     const base = getApiBaseUrl();
     const res = await fetch(`${base}/api/v1/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });
-    if (res.ok) return "valid";
-    if (res.status === 401 || res.status === 403) return "invalid";
-    return "unknown";
+    if (res.ok) {
+      const profile = (await res.json()) as ServerProfile;
+      return { status: "valid", profile };
+    }
+    if (res.status === 401 || res.status === 403) return { status: "invalid" };
+    return { status: "unknown" };
   } catch {
-    return "unknown";
+    return { status: "unknown" };
   }
 }

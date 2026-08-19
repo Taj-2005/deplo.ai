@@ -22,7 +22,7 @@ const navLinks = [
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { isAuthenticated, isLoading, signIn, signOut } = useAuth();
+  const { user, isAuthenticated, isLoading, signIn, signOut } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -107,9 +107,20 @@ export function Navbar() {
                   )}
                   <button
                     onClick={handleLaunchApp}
-                    className="flex items-center gap-1.5 h-8 px-4 text-black text-[13px] font-semibold tracking-[-0.01em] hover:bg-gray-100 rounded transition-colors"
+                    className="flex items-center gap-2 h-8 px-4 text-black text-[13px] font-semibold tracking-[-0.01em] hover:bg-gray-100 rounded transition-colors"
                   >
-                    <Image src="/logo.png" alt="" width={28} height={28} className="object-contain" />
+                    {isAuthenticated && user?.avatarUrl ? (
+                      <Image
+                        src={user.avatarUrl}
+                        alt=""
+                        width={22}
+                        height={22}
+                        className="rounded-full object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <Image src="/logo.png" alt="" width={28} height={28} className="object-contain" />
+                    )}
                     {isAuthenticated ? "Dashboard" : "Launch App"}
                   </button>
                 </>

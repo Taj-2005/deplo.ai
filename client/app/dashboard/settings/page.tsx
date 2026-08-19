@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { CheckCircle2, LogOut, AlertTriangle, ChevronRight, Terminal, Copy, Check, Trash2 } from "lucide-react";
 import { APP_VERSION } from "@/lib/version";
+import { UserAvatar } from "@/components/dashboard/UserAvatar";
 import {
   deleteAccount,
   listCliTokens,
@@ -238,7 +239,6 @@ export default function SettingsPage() {
     }
   };
 
-  const userInitial = user?.email?.[0]?.toUpperCase() ?? "U";
 
   return (
     <motion.div
@@ -259,10 +259,13 @@ export default function SettingsPage() {
       <div className="space-y-4">
         {/* Profile */}
         <Section title="Profile" description="Your account information.">
-          <SettingRow label="Avatar">
-            <div className="w-9 h-9 bg-ds-primary-dim border border-ds-outline-variant flex items-center justify-center text-[13px] font-mono text-ds-on-primary-dim">
-              {userInitial}
-            </div>
+          <SettingRow label="Avatar" description="Synced from your GitHub profile.">
+            <UserAvatar avatarUrl={user?.avatarUrl} name={user?.name ?? user?.email} size={36} />
+          </SettingRow>
+          <SettingRow label="GitHub account">
+            <span className="text-[12px] font-mono text-ds-on-variant">
+              {user?.githubLogin ? `@${user.githubLogin}` : "—"}
+            </span>
           </SettingRow>
           <SettingRow label="Email address" description="From your GitHub account.">
             <span className="text-[12px] font-mono text-ds-on-variant">

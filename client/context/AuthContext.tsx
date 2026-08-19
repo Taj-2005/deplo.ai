@@ -15,11 +15,17 @@ import {
   isTokenValid,
   getGithubAuthUrl,
   verifySession,
+  markSignedOut,
+  consumeSignedOut,
 } from "@/lib/auth";
 
 interface AuthUser {
   id: string;
   email: string;
+  /** Filled in once the server profile loads; the JWT carries only id + email. */
+  name?: string;
+  githubLogin?: string;
+  avatarUrl?: string | null;
 }
 
 interface AuthContextValue {
@@ -64,10 +70,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // the browser last — so confirm with the server and drop it if rejected.
       const token = getToken();
       if (!stored || !token) return;
-      void verifySession(token).then((verdict) => {
-        if (cancelled || verdict !== "invalid") return;
-        clearToken();
-        setUser(null);
+      void verifySession(token).then(({ status, profile }) => {
+        if (cancelled) return;
+        if (status === "invalid") {
+          clearToken();
+          setUser(null);
+          return;
+        }
+        // Same round-trip also yields the GitHub profile (name, login, avatar)
+        // that the JWT doesn't carry.
+        if (status === "valid" && profile) {
+          setUser({
+            id: profile.userId,
+            email: profile.email,
+            name: profile.name,
+            githubLogin: profile.githubLogin,
+            avatarUrl: profile.avatarUrl,
+          });
+        }
       });
     }, 0);
 
@@ -78,10 +98,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = useCallback(() => {
-    window.location.href = getGithubAuthUrl();
+    // Force GitHub's account picker when the last action was an explicit
+    // sign-out, so the user isn't silently returned to the account they left.
+    window.location.href = getGithubAuthUrl(consumeSignedOut());
   }, []);
 
   const signOut = useCallback(() => {
+    markSignedOut();
     clearToken();
     setUser(null);
     window.location.href = "/";
