@@ -24,7 +24,7 @@ function LoadingScreen() {
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
-  const [vercelChecked, setVercelChecked] = useState(false);
+  const [providerChecked, setProviderChecked] = useState(false);
   const checkStarted = useRef(false);
 
   // Redirect unauthenticated users
@@ -41,22 +41,25 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
     getIntegrations()
       .then((integrations) => {
-        const connected = integrations.some(
-          (i) => i.provider === "VERCEL" && i.connected,
-        );
-        if (!connected) {
+        // Onboarding requires both providers, so the gate enforces the same
+        // rule — otherwise navigating straight to /dashboard would bypass it.
+        // Checks both by name rather than counting: a future third provider
+        // must not silently satisfy the requirement.
+        const vercel = integrations.some((i) => i.provider === "VERCEL" && i.connected);
+        const render = integrations.some((i) => i.provider === "RENDER" && i.connected);
+        if (!vercel || !render) {
           router.replace("/onboarding");
         } else {
-          setVercelChecked(true);
+          setProviderChecked(true);
         }
       })
       .catch(() => {
         // On error don't block the dashboard
-        setVercelChecked(true);
+        setProviderChecked(true);
       });
   }, [isAuthenticated, router]);
 
-  if (isLoading || !vercelChecked) return <LoadingScreen />;
+  if (isLoading || !providerChecked) return <LoadingScreen />;
   if (!isAuthenticated) return null;
 
   return (
