@@ -7,6 +7,9 @@ import type {
   DetectedStack,
   EnvVariable,
 } from "../../../domain/deployment/Deployment";
+import { decrypt, encrypt } from "../../../shared/utils/crypto";
+
+const ENCRYPTED_PREFIX = "enc:v1:";
 
 export class DeploymentRepository implements IDeploymentRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -35,7 +38,13 @@ export class DeploymentRepository implements IDeploymentRepository {
       ...row,
       status: row.status as Deployment["status"],
       detectedStack: row.detectedStack as DetectedStack | null,
-      envVariables: (row.envVariables as EnvVariable[]) ?? [],
+      envVariables: ((row.envVariables as EnvVariable[]) ?? []).map((variable) => ({
+        ...variable,
+        // Read legacy plaintext records during rollout, but encrypt every new write.
+        value: variable.value.startsWith(ENCRYPTED_PREFIX)
+          ? decrypt(variable.value.slice(ENCRYPTED_PREFIX.length))
+          : variable.value,
+      })),
       logs: (row.logs as string[]) ?? [],
       // Neon driver can return DateTime as ISO strings — always coerce to Date
       completedAt: row.completedAt ? new Date(row.completedAt) : null,
@@ -113,7 +122,10 @@ export class DeploymentRepository implements IDeploymentRepository {
       data.detectedStack = input.detectedStack as unknown as Prisma.InputJsonValue;
     }
     if (input.envVariables !== undefined) {
-      data.envVariables = input.envVariables as unknown as Prisma.InputJsonValue;
+      data.envVariables = input.envVariables.map((variable) => ({
+        ...variable,
+        value: `${ENCRYPTED_PREFIX}${encrypt(variable.value)}`,
+      })) as unknown as Prisma.InputJsonValue;
     }
     if (input.frontendUrl !== undefined) data.frontendUrl = input.frontendUrl;
     if (input.backendUrl !== undefined) data.backendUrl = input.backendUrl;

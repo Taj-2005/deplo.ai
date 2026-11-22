@@ -105,6 +105,13 @@ export class DeploymentService {
       });
     }
 
+    const missingRequired = Array.from(existingMap.values())
+      .filter((variable) => variable.isRequired && !variable.value.trim())
+      .map((variable) => variable.key);
+    if (missingRequired.length) {
+      throw AppError.validation(`Missing required environment variables: ${missingRequired.join(", ")}`);
+    }
+
     const updated = await this.deploymentRepository.update(deploymentId, {
       envVariables: Array.from(existingMap.values()),
       status: "DEPLOYING_BACKEND",

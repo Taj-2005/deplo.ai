@@ -47,6 +47,7 @@ import { IntegrationsController } from "./interfaces/http/controllers/integratio
 import { MonitoringController } from "./interfaces/http/controllers/monitoring.controller";
 import { CliTokensController } from "./interfaces/http/controllers/cli-tokens.controller";
 import { FeedbackController } from "./interfaces/http/controllers/feedback.controller";
+import { MobileController } from "./interfaces/http/controllers/mobile.controller";
 import { CliTokenService } from "./application/services/CliTokenService";
 import { createAuthMiddleware } from "./interfaces/http/middleware/auth.middleware";
 import { asyncHandler } from "./shared/utils/asyncHandler";
@@ -177,6 +178,7 @@ async function bootstrap(): Promise<void> {
   const monitoringController = new MonitoringController(prisma, integrationService);
   const cliTokensController = new CliTokensController(cliTokenService);
   const feedbackController = new FeedbackController(userRepository, mailer);
+  const mobileController = new MobileController(prisma);
 
   // ── Public routes ─────────────────────────────────────────────────────────
   api.get("/health", asyncHandler(healthController.check));
@@ -238,6 +240,13 @@ async function bootstrap(): Promise<void> {
   api.delete("/cli-tokens/:id", asyncHandler(cliTokensController.revoke));
 
   api.post("/feedback", asyncHandler(feedbackController.submit));
+
+  api.post("/mobile/devices", asyncHandler(mobileController.registerDevice));
+  api.get("/mobile/devices", asyncHandler(mobileController.listDevices));
+  api.delete("/mobile/devices/:deviceId", asyncHandler(mobileController.revokeDevice));
+  api.get("/mobile/notifications/preferences", asyncHandler(mobileController.getPreferences));
+  api.put("/mobile/notifications/preferences", asyncHandler(mobileController.updatePreferences));
+  api.get("/mobile/notifications", asyncHandler(mobileController.listNotifications));
 
   api.get("/stats", asyncHandler(statsController.get));
 

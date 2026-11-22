@@ -17,6 +17,13 @@ export interface JwtPayload {
   exp: number;
 }
 
+interface OAuthState {
+  redirect: "mobile";
+  callback: "deplo://auth/callback";
+  iat: number;
+  exp: number;
+}
+
 export class AuthService {
   constructor(
     private readonly userRepository: IUserRepository,
@@ -72,6 +79,23 @@ export class AuthService {
     }
   }
 
+  createMobileOAuthState(): string {
+    return jwt.sign(
+      { redirect: "mobile", callback: "deplo://auth/callback" },
+      env.JWT_SECRET,
+      { expiresIn: "10m" },
+    );
+  }
+
+  verifyMobileOAuthState(state: string): boolean {
+    try {
+      const payload = jwt.verify(state, env.JWT_SECRET) as OAuthState;
+      return payload.redirect === "mobile" && payload.callback === "deplo://auth/callback";
+    } catch {
+      return false;
+    }
+  }
+
   private async syncRepositories(userId: string, encryptedToken: string): Promise<void> {
     const plainToken = decrypt(encryptedToken);
     const ghRepos = await this.github.listRepositories(plainToken);
@@ -104,7 +128,7 @@ export class AuthService {
     return jwt.sign(
       { sub: user.id, email: user.email },
       env.JWT_SECRET,
-      { expiresIn: env.JWT_EXPIRES_IN } as jwt.SignOptions,
+      { expiresIn: "7d" },
     );
   }
 }
