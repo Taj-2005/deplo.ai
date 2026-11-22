@@ -8,6 +8,7 @@ import { enqueueAnalysis, enqueueDeploy } from "../../infrastructure/queue/Deplo
 import { CacheService, CACHE_TTL } from "../../infrastructure/redis/CacheService";
 import { AppError } from "../../shared/errors/AppError";
 import { logger } from "../../shared/logger/logger";
+import type { MobileNotificationService } from "../notifications/MobileNotificationService";
 
 export class DeploymentService {
   constructor(
@@ -16,6 +17,7 @@ export class DeploymentService {
     private readonly repositoryRepository: IRepositoryRepository,
     private readonly queue: Queue<DeploymentJobData, void, DeploymentJobName>,
     private readonly cache: CacheService,
+    private readonly mobileNotifications: MobileNotificationService | null = null,
   ) {}
 
   async getDeployment(id: string, userId: string): Promise<Deployment> {
@@ -75,6 +77,17 @@ export class DeploymentService {
     await this.deploymentRepository.appendLog(deployment.id, "Deployment queued.");
     await enqueueAnalysis(this.queue, deployment.id);
     logger.info("Deployment queued", { deploymentId: deployment.id, repositoryId: params.repositoryId });
+    if (this.mobileNotifications) {
+      await this.mobileNotifications.notify({
+        userId: params.userId,
+        eventId: `${deployment.id}:started`,
+        type: "deployment-started",
+        title: `${repository.name} deployment started`,
+        body: "Your deployment is being analyzed.",
+        projectId: repository.id,
+        deploymentId: deployment.id,
+      });
+    }
 
     return deployment;
   }
@@ -103,6 +116,13 @@ export class DeploymentService {
         key: provided.key,
         value: provided.value,
       });
+    }
+
+    const missingRequired = Array.from(existingMap.values())
+      .filter((variable) => variable.isRequired && !variable.value.trim())
+      .map((variable) => variable.key);
+    if (missingRequired.length) {
+      throw AppError.validation(`Missing required environment variables: ${missingRequired.join(", ")}`);
     }
 
     const updated = await this.deploymentRepository.update(deploymentId, {

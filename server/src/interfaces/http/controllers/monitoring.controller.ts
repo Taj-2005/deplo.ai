@@ -1,11 +1,24 @@
 import type { Request, Response, NextFunction } from "express";
 import type { PrismaClient } from "@prisma/client";
+import type { Repository as PrismaRepository } from "@prisma/client";
 import { createHash } from "node:crypto";
 import type { IntegrationService } from "../../../application/services/IntegrationService";
 import { RenderAdapter } from "../../../infrastructure/render/RenderAdapter";
 import { logger } from "../../../shared/logger/logger";
 
 const BOT_RE = /bot|crawler|spider|preview|monitor|curl|wget/i;
+
+interface TargetMonitoringData {
+  url: string | null;
+  current: {
+    ok: boolean;
+    httpStatus: number | null;
+    latencyMs: number | null;
+    checkedAt: Date;
+  } | null;
+  uptime24h: number | null;
+  series: Array<{ t: Date; ok: boolean; latencyMs: number | null }>;
+}
 
 /**
  * Per-project monitoring + product analytics.
@@ -22,7 +35,7 @@ export class MonitoringController {
   ) {}
 
   /** Ownership guard: the repo must belong to the authenticated user. */
-  private async ownedRepo(userId: string, repoId: string) {
+  private async ownedRepo(userId: string, repoId: string): Promise<PrismaRepository | null> {
     const repo = await this.prisma.repository.findUnique({ where: { id: repoId } });
     if (!repo || repo.userId !== userId) return null;
     return repo;
@@ -54,7 +67,7 @@ export class MonitoringController {
         }),
       ]);
 
-      const byTarget = (target: "FRONTEND" | "BACKEND") => {
+      const byTarget = (target: "FRONTEND" | "BACKEND"): TargetMonitoringData => {
         const s = samples.filter((x) => x.target === target);
         const latest = s[s.length - 1] ?? null;
         const upCount = s.filter((x) => x.ok).length;

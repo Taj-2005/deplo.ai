@@ -29,6 +29,11 @@ export class AuthController {
       params.set("prompt", "select_account");
     }
 
+    const mobileRedirect = req.query["redirect"] ?? req.query["callback"];
+    if (mobileRedirect === "deplo://auth/callback") {
+      params.set("state", this.authService.createMobileOAuthState());
+    }
+
     res.redirect(`https://github.com/login/oauth/authorize?${params.toString()}`);
   };
 
@@ -40,10 +45,21 @@ export class AuthController {
     try {
       const code = req.query["code"] as string | undefined;
       if (!code) {
-        res.status(400).json({ error: { message: "Missing code parameter" } });
+        const state = String(req.query["state"] ?? "");
+        if (this.authService.verifyMobileOAuthState(state)) {
+          res.redirect("deplo://auth/callback?auth=failed&error=missing_code");
+        } else {
+          res.status(400).json({ error: { message: "Missing code parameter" } });
+        }
         return;
       }
       const { token, user } = await this.authService.loginWithGithub(code);
+
+      const state = String(req.query["state"] ?? "");
+      if (this.authService.verifyMobileOAuthState(state)) {
+        res.redirect(`deplo://auth/callback?token=${encodeURIComponent(token)}`);
+        return;
+      }
 
       const clientUrl = env.ALLOWED_ORIGINS[0] ?? "http://localhost:3000";
       res.redirect(`${clientUrl}/auth/callback?token=${encodeURIComponent(token)}&userId=${user.id}`);
@@ -51,6 +67,10 @@ export class AuthController {
       logger.error("GitHub OAuth callback failed", {
         message: err instanceof Error ? err.message : String(err),
       });
+      if (this.authService.verifyMobileOAuthState(String(req.query["state"] ?? ""))) {
+        res.redirect(`deplo://auth/callback?auth=failed&error=${encodeURIComponent("oauth_failed")}`);
+        return;
+      }
       const clientUrl = env.ALLOWED_ORIGINS[0] ?? "http://localhost:3000";
       res.redirect(`${clientUrl}/?auth=failed`);
     }

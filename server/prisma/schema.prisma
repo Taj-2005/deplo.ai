@@ -22,6 +22,10 @@ model User {
   repositories        Repository[]
   deployments         Deployment[]
   providerConnections ProviderConnection[]
+  mobileDevices       MobileDevice[]
+  notificationPreference NotificationPreference?
+  notificationHistory NotificationHistory[]
+  notificationEvents NotificationEvent[]
 
   @@index([githubId])
   @@index([email])
@@ -70,6 +74,7 @@ model Repository {
   deployments Deployment[]
   uptimeSamples UptimeSample[]
   analyticsEvents AnalyticsEvent[]
+  notificationOverrides ProjectNotificationOverride[]
 
   @@index([userId])
   @@index([githubRepoId])
@@ -150,6 +155,113 @@ model Deployment {
   @@index([userId])
   @@index([repositoryId])
   @@index([status])
+}
+
+model MobileDevice {
+  id                    String   @id @default(cuid())
+  userId                String
+  deviceId              String
+  platform              String
+  deviceName            String
+  pushToken             String
+  pushEnabled           Boolean  @default(true)
+  registrationStatus    String   @default("ACTIVE")
+  invalidToken          Boolean  @default(false)
+  lastSuccessfulDelivery DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pushReceipts PushReceipt[]
+  notificationDeliveries NotificationDelivery[]
+
+  @@unique([userId, deviceId])
+  @@index([userId, registrationStatus])
+}
+
+model NotificationPreference {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  enabled            Boolean  @default(true)
+  categories         Json     @default("{}")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectOverrides ProjectNotificationOverride[]
+}
+
+model ProjectNotificationOverride {
+  id             String   @id @default(cuid())
+  preferenceId   String
+  repositoryId   String
+  categories     Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  preference NotificationPreference @relation(fields: [preferenceId], references: [id], onDelete: Cascade)
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@unique([preferenceId, repositoryId])
+  @@index([repositoryId])
+}
+
+model NotificationHistory {
+  id           String   @id @default(cuid())
+  userId       String
+  type         String
+  title        String
+  body         String
+  read         Boolean  @default(false)
+  data         Json     @default("{}")
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries NotificationDelivery[]
+
+  @@index([userId, createdAt])
+}
+
+model NotificationDelivery {
+  id                   String   @id @default(cuid())
+  notificationHistoryId String
+  deviceId             String
+  status               String   @default("PENDING")
+  attemptCount         Int      @default(0)
+  nextAttemptAt        DateTime @default(now())
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  notification NotificationHistory @relation(fields: [notificationHistoryId], references: [id], onDelete: Cascade)
+  device       MobileDevice        @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationHistoryId, deviceId])
+  @@index([status, nextAttemptAt])
+}
+
+model NotificationEvent {
+  id           String   @id @default(cuid())
+  userId       String
+  eventId      String
+  type         String
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+  @@index([userId, createdAt])
+}
+
+model PushReceipt {
+  id        String   @id @default(cuid())
+  deviceId  String
+  ticketId  String   @unique
+  createdAt DateTime @default(now())
+  checkedAt DateTime?
+
+  device MobileDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([checkedAt, createdAt])
 }
 
 enum DeploymentStatus {
