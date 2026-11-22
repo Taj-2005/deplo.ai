@@ -45,6 +45,23 @@ function makePrisma(overrides: Record<string, unknown> = {}) {
 describe("MobileNotificationService", () => {
   afterEach(() => jest.restoreAllMocks());
 
+  it("ignores notification types without a preference category", async () => {
+    const { prisma, raw } = makePrisma();
+    const fetchMock = jest.spyOn(global, "fetch");
+
+    await new MobileNotificationService(prisma).notify({
+      userId: "user_1",
+      eventId: "dep_0:unknown",
+      type: "unknown-event",
+      title: "ignored",
+      body: "ignored",
+      projectId: "repo_1",
+    });
+
+    expect(raw.$transaction).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("sends only route identifiers and cleans up invalid tokens", async () => {
     const { prisma, raw } = makePrisma();
     const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue(new Response(JSON.stringify({
@@ -148,6 +165,27 @@ describe("MobileNotificationService", () => {
     expect(raw.notificationDelivery.createMany).not.toHaveBeenCalled();
   });
 
+  it("does not enqueue a push when no active devices are registered", async () => {
+    const { prisma, raw } = makePrisma({
+      mobileDevice: {
+        findMany: jest.fn().mockResolvedValue([]),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+    });
+
+    await new MobileNotificationService(prisma).notify({
+      userId: "user_1",
+      eventId: "dep_5:failed",
+      type: "deployment-failed",
+      title: "shop deployment failed",
+      body: "Review logs in Deplo.",
+      projectId: "repo_1",
+      deploymentId: "dep_5",
+    });
+
+    expect(raw.notificationDelivery.createMany).not.toHaveBeenCalled();
+  });
+
   it("retries a transient provider outage and persists a backoff", async () => {
     const { prisma, raw } = makePrisma();
     jest.spyOn(global, "fetch").mockResolvedValue(new Response("{}", { status: 503 }));
@@ -190,5 +228,14 @@ describe("MobileNotificationService", () => {
       where: { id: "receipt_1" },
       data: { checkedAt: expect.any(Date) },
     });
+  });
+
+  it("does not request Expo receipts when there are none due", async () => {
+    const { prisma } = makePrisma();
+    const fetchMock = jest.spyOn(global, "fetch");
+
+    await new MobileNotificationService(prisma).checkReceipts();
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
