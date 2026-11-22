@@ -173,6 +173,7 @@ model MobileDevice {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   pushReceipts PushReceipt[]
+  notificationDeliveries NotificationDelivery[]
 
   @@unique([userId, deviceId])
   @@index([userId, registrationStatus])
@@ -216,8 +217,26 @@ model NotificationHistory {
   createdAt    DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries NotificationDelivery[]
 
   @@index([userId, createdAt])
+}
+
+model NotificationDelivery {
+  id                   String   @id @default(cuid())
+  notificationHistoryId String
+  deviceId             String
+  status               String   @default("PENDING")
+  attemptCount         Int      @default(0)
+  nextAttemptAt        DateTime @default(now())
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  notification NotificationHistory @relation(fields: [notificationHistoryId], references: [id], onDelete: Cascade)
+  device       MobileDevice        @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationHistoryId, deviceId])
+  @@index([status, nextAttemptAt])
 }
 
 model NotificationEvent {

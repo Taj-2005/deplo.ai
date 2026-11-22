@@ -13,7 +13,10 @@ export function startMobileReceiptWorker(connection: IORedis, prisma: PrismaClie
   const notifications = new MobileNotificationService(prisma);
   const worker = new Worker(
     QUEUE_NAME,
-    async () => notifications.checkReceipts(),
+    async () => {
+      await notifications.retryPendingDeliveries();
+      await notifications.checkReceipts();
+    },
     { connection, concurrency: 1, drainDelay: 60, stalledInterval: 300_000 },
   );
   worker.on("error", (error) => logger.error("Mobile receipt worker error", { error: error.message }));

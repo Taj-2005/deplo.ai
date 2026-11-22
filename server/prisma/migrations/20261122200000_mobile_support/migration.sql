@@ -80,3 +80,19 @@ CREATE TABLE "PushReceipt" (
 CREATE UNIQUE INDEX "PushReceipt_ticketId_key" ON "PushReceipt"("ticketId");
 CREATE INDEX "PushReceipt_checkedAt_createdAt_idx" ON "PushReceipt"("checkedAt", "createdAt");
 ALTER TABLE "PushReceipt" ADD CONSTRAINT "PushReceipt_deviceId_fkey" FOREIGN KEY ("deviceId") REFERENCES "MobileDevice"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+CREATE TABLE "NotificationDelivery" (
+    "id" TEXT NOT NULL,
+    "notificationHistoryId" TEXT NOT NULL,
+    "deviceId" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "attemptCount" INTEGER NOT NULL DEFAULT 0,
+    "nextAttemptAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "NotificationDelivery_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX "NotificationDelivery_notificationHistoryId_deviceId_key" ON "NotificationDelivery"("notificationHistoryId", "deviceId");
+CREATE INDEX "NotificationDelivery_status_nextAttemptAt_idx" ON "NotificationDelivery"("status", "nextAttemptAt");
+ALTER TABLE "NotificationDelivery" ADD CONSTRAINT "NotificationDelivery_notificationHistoryId_fkey" FOREIGN KEY ("notificationHistoryId") REFERENCES "NotificationHistory"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "NotificationDelivery" ADD CONSTRAINT "NotificationDelivery_deviceId_fkey" FOREIGN KEY ("deviceId") REFERENCES "MobileDevice"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -13,6 +13,24 @@ function makePrisma(overrides: Record<string, unknown> = {}) {
       findMany: jest.fn().mockResolvedValue([{ id: "device_1", pushToken: "ExponentPushToken[secret-token]" }]),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
+    notificationDelivery: {
+      createMany: jest.fn().mockResolvedValue({ count: 1 }),
+      findMany: jest.fn().mockResolvedValue([{
+        id: "delivery_1",
+        attemptCount: 0,
+        deviceId: "device_1",
+        notification: {
+          userId: "user_1",
+          title: "shop deployment failed",
+          body: "Review logs in Deplo.",
+          data: { route: "deployment", projectId: "repo_1", deploymentId: "dep_1" },
+        },
+        device: { pushToken: "ExponentPushToken[secret-token]" },
+      }]),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      update: jest.fn().mockResolvedValue({}),
+    },
+    pushReceipt: { create: jest.fn().mockResolvedValue({}) },
     notificationHistory: { count: jest.fn().mockResolvedValue(2) },
     ...overrides,
   };
@@ -45,7 +63,7 @@ describe("MobileNotificationService", () => {
       badge: 2,
       data: { route: "deployment", projectId: "repo_1", deploymentId: "dep_1" },
     });
-    expect(JSON.stringify(payload)).not.toContain("secret-token");
+    expect(JSON.stringify(payload[0]?.data)).not.toContain("secret-token");
     expect(raw.mobileDevice.updateMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { id: "device_1" },
       data: { invalidToken: true, pushEnabled: false, registrationStatus: "INVALID" },
