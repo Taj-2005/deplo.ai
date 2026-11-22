@@ -16,7 +16,9 @@ const DeviceSchema = z.object({
   deviceId: z.string().min(16).max(256),
   platform: z.enum(["ios", "android"]),
   deviceName: z.string().trim().min(1).max(120),
-  pushToken: z.string().min(1).max(2048),
+  // The Expo Push Service routes these project tokens through FCM (Android)
+  // and APNs (iOS); native device tokens are intentionally not accepted here.
+  pushToken: z.string().regex(/^(ExponentPushToken|ExpoPushToken)\[[^\]]+\]$/),
   pushEnabled: z.boolean(),
 });
 
@@ -145,5 +147,16 @@ export class MobileController {
       select: { id: true, type: true, title: true, body: true, read: true, createdAt: true, data: true },
     });
     res.json(notifications);
+  };
+
+  markNotificationRead = async (req: Request, res: Response): Promise<void> => {
+    const id = req.params["notificationId"];
+    if (!id) throw AppError.notFound("Notification");
+    const result = await this.prisma.notificationHistory.updateMany({
+      where: { id, userId: req.userId! },
+      data: { read: true },
+    });
+    if (result.count === 0) throw AppError.notFound("Notification");
+    res.status(204).end();
   };
 }

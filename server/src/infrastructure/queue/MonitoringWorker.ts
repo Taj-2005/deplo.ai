@@ -2,6 +2,7 @@ import { Queue, Worker } from "bullmq";
 import type IORedis from "ioredis";
 import type { PrismaClient } from "@prisma/client";
 import { logger } from "../../shared/logger/logger";
+import type { MobileNotificationService } from "../../application/notifications/MobileNotificationService";
 
 const QUEUE_NAME = "monitoring";
 const SCAN_INTERVAL_MS = 5 * 60 * 1000; // one probe round every 5 minutes
@@ -34,7 +35,11 @@ async function probe(url: string): Promise<{ ok: boolean; httpStatus: number | n
  * backends sleep when idle — a slow first response still counts as UP
  * (status < 500); only errors and timeouts count as DOWN.
  */
-export function startMonitoring(connection: IORedis, prisma: PrismaClient): { queue: Queue; worker: Worker } {
+export function startMonitoring(
+  connection: IORedis,
+  prisma: PrismaClient,
+  notifications?: MobileNotificationService,
+): { queue: Queue; worker: Worker } {
   const queue = new Queue(QUEUE_NAME, { connection });
 
   void queue.upsertJobScheduler("monitor-scan", { every: SCAN_INTERVAL_MS }, { name: "scan" });
@@ -62,6 +67,11 @@ export function startMonitoring(connection: IORedis, prisma: PrismaClient): { qu
       const results = await Promise.all(
         targets.map(async (t) => ({ ...t, ...(await probe(t.url)) })),
       );
+      const previousSamples = await Promise.all(results.map((result) => prisma.uptimeSample.findFirst({
+        where: { repositoryId: result.repositoryId, target: result.target },
+        orderBy: { checkedAt: "desc" },
+        select: { ok: true, checkedAt: true },
+      })));
       await prisma.uptimeSample.createMany({
         data: results.map((r) => ({
           repositoryId: r.repositoryId,
@@ -72,6 +82,27 @@ export function startMonitoring(connection: IORedis, prisma: PrismaClient): { qu
           latencyMs: r.latencyMs,
         })),
       });
+
+      if (notifications) {
+        await Promise.all(results.map(async (result, index) => {
+          const previous = previousSamples[index];
+          if (!previous || previous.ok === result.ok) return;
+          const repository = await prisma.repository.findUnique({
+            where: { id: result.repositoryId },
+            select: { id: true, userId: true, name: true },
+          });
+          if (!repository) return;
+          const recovered = result.ok;
+          await notifications.notify({
+            userId: repository.userId,
+            eventId: `uptime:${repository.id}:${result.target}:${previous.checkedAt.toISOString()}:${recovered ? "recovered" : "down"}`,
+            type: recovered ? "project-recovered" : "project-down",
+            title: `${repository.name} ${recovered ? "recovered" : "is down"}`,
+            body: `${result.target.toLowerCase()} endpoint ${recovered ? "is responding again" : "is not responding"}.`,
+            projectId: repository.id,
+          });
+        }));
+      }
 
       // Retention: drop samples older than the window we ever display.
       await prisma.uptimeSample.deleteMany({

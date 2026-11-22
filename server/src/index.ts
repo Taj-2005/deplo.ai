@@ -23,6 +23,7 @@ import { GitHubAdapter } from "./infrastructure/github/GitHubAdapter";
 import { getDeploymentQueue } from "./infrastructure/queue/DeploymentQueue";
 import { createDeploymentWorker } from "./infrastructure/queue/DeploymentWorker";
 import { startMonitoring } from "./infrastructure/queue/MonitoringWorker";
+import { startMobileReceiptWorker } from "./infrastructure/queue/MobileReceiptWorker";
 
 // ── Application Services ──────────────────────────────────────────────────────
 import { AuthService } from "./application/services/AuthService";
@@ -34,6 +35,7 @@ import { RepositoryService } from "./application/services/RepositoryService";
 import { IntegrationService } from "./application/services/IntegrationService";
 import { DeploymentOrchestrator } from "./application/orchestration/DeploymentOrchestrator";
 import { DeploymentEmailService } from "./application/notifications/DeploymentEmailService";
+import { MobileNotificationService } from "./application/notifications/MobileNotificationService";
 import { SmtpMailer } from "./infrastructure/email/SmtpMailer";
 
 // ── HTTP Controllers ──────────────────────────────────────────────────────────
@@ -51,6 +53,7 @@ import { MobileController } from "./interfaces/http/controllers/mobile.controlle
 import { CliTokenService } from "./application/services/CliTokenService";
 import { createAuthMiddleware } from "./interfaces/http/middleware/auth.middleware";
 import { asyncHandler } from "./shared/utils/asyncHandler";
+import { AppError } from "./shared/errors/AppError";
 
 async function bootstrap(): Promise<void> {
   // ── Database ─────────────────────────────────────────────────────────────
@@ -95,6 +98,7 @@ async function bootstrap(): Promise<void> {
   // Deployment lifecycle emails (soft-off until SMTP env vars are set).
   const mailer = new SmtpMailer();
   const emailService = new DeploymentEmailService(mailer);
+  const mobileNotificationService = new MobileNotificationService(prisma);
   logger.info(mailer.isConfigured() ? "Deployment emails enabled" : "Deployment emails disabled (SMTP not configured)");
 
   const integrationService = new IntegrationService(providerConnectionRepository, {
@@ -114,6 +118,7 @@ async function bootstrap(): Promise<void> {
     repositoryRepository,
     deploymentQueue,
     cache,
+    mobileNotificationService,
   );
 
   const orchestrator = new DeploymentOrchestrator(
@@ -125,12 +130,14 @@ async function bootstrap(): Promise<void> {
     github,
     reasoning,
     emailService,
+    mobileNotificationService,
   );
 
   const worker = createDeploymentWorker(workerRedis, orchestrator);
   logger.info("Deployment worker started");
 
-  startMonitoring(workerRedis, prisma);
+  const monitoringWorker = startMonitoring(workerRedis, prisma, mobileNotificationService);
+  const mobileReceiptWorker = startMobileReceiptWorker(workerRedis, prisma);
   logger.info("Uptime monitoring started (5-minute probes)");
 
   // ── Express app ───────────────────────────────────────────────────────────
@@ -241,12 +248,23 @@ async function bootstrap(): Promise<void> {
 
   api.post("/feedback", asyncHandler(feedbackController.submit));
 
+  // CLI credentials authenticate general API calls but must not register or
+  // mutate mobile devices and push preferences.
+  api.use("/mobile", (req, _res, next) => {
+    const bearer = (req.headers.authorization ?? "").slice("Bearer ".length);
+    if (!req.headers.authorization?.startsWith("Bearer ") || bearer.startsWith("dpl_")) {
+      next(AppError.unauthorized());
+      return;
+    }
+    next();
+  });
   api.post("/mobile/devices", asyncHandler(mobileController.registerDevice));
   api.get("/mobile/devices", asyncHandler(mobileController.listDevices));
   api.delete("/mobile/devices/:deviceId", asyncHandler(mobileController.revokeDevice));
   api.get("/mobile/notifications/preferences", asyncHandler(mobileController.getPreferences));
   api.put("/mobile/notifications/preferences", asyncHandler(mobileController.updatePreferences));
   api.get("/mobile/notifications", asyncHandler(mobileController.listNotifications));
+  api.patch("/mobile/notifications/:notificationId/read", asyncHandler(mobileController.markNotificationRead));
 
   api.get("/stats", asyncHandler(statsController.get));
 
@@ -276,7 +294,11 @@ async function bootstrap(): Promise<void> {
     server.close(() => {
       void (async () => {
         await worker.close();
+        await monitoringWorker.worker.close();
+        await mobileReceiptWorker.worker.close();
         await deploymentQueue.close();
+        await monitoringWorker.queue.close();
+        await mobileReceiptWorker.queue.close();
         await prisma.$disconnect();
         await cacheRedis.quit();
         await workerRedis.quit();

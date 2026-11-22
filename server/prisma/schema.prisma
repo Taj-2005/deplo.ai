@@ -172,6 +172,7 @@ model MobileDevice {
   updatedAt             DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pushReceipts PushReceipt[]
 
   @@unique([userId, deviceId])
   @@index([userId, registrationStatus])
@@ -230,6 +231,18 @@ model NotificationEvent {
 
   @@unique([userId, eventId])
   @@index([userId, createdAt])
+}
+
+model PushReceipt {
+  id        String   @id @default(cuid())
+  deviceId  String
+  ticketId  String   @unique
+  createdAt DateTime @default(now())
+  checkedAt DateTime?
+
+  device MobileDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([checkedAt, createdAt])
 }
 
 enum DeploymentStatus {

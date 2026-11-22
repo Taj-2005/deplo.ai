@@ -4,6 +4,7 @@ import type { IUserRepository } from "../../domain/user/UserRepository.interface
 import type { AnalysisService } from "../services/AnalysisService";
 import type { GroqReasoningService } from "../analysis/GroqReasoningService";
 import type { DeploymentEmailService } from "../notifications/DeploymentEmailService";
+import type { MobileNotificationService } from "../notifications/MobileNotificationService";
 import type { AiFailureDiagnosis } from "../../domain/analysis/types";
 import type { IntegrationService } from "../services/IntegrationService";
 import { VercelAdapter, type VercelFramework } from "../../infrastructure/vercel/VercelAdapter";
@@ -80,6 +81,7 @@ export class DeploymentOrchestrator {
     private readonly reasoning: GroqReasoningService | null = null,
     /** Optional lifecycle emails — best-effort, never affects a deployment. */
     private readonly emails: DeploymentEmailService | null = null,
+    private readonly mobileNotifications: MobileNotificationService | null = null,
   ) {}
 
   /** Resolve the pieces every notification needs (null when unavailable). */
@@ -167,6 +169,17 @@ export class DeploymentOrchestrator {
             unsatisfied.map((v) => v.key),
           );
         }
+        if (this.mobileNotifications) {
+          await this.mobileNotifications.notify({
+            userId: deployment.userId,
+            eventId: `${deploymentId}:environment-required`,
+            type: "environment-required",
+            title: `${repository.name} needs environment variables`,
+            body: "Add the required values to continue this deployment.",
+            projectId: repository.id,
+            deploymentId,
+          });
+        }
       }
 
       return { needsEnv };
@@ -208,6 +221,17 @@ export class DeploymentOrchestrator {
         });
         await this.deploymentRepository.appendLog(deploymentId, "Deployment completed successfully.");
         logger.info("Deployment completed (no stack)", { deploymentId });
+        if (this.mobileNotifications) {
+          await this.mobileNotifications.notify({
+            userId: deployment.userId,
+            eventId: `${deploymentId}:completed`,
+            type: "deployment-completed",
+            title: `${repository.name} deployment completed`,
+            body: "Your deployment completed successfully.",
+            projectId: repository.id,
+            deploymentId,
+          });
+        }
         return;
       }
 
@@ -520,6 +544,18 @@ export class DeploymentOrchestrator {
       await this.deploymentRepository.appendLog(deploymentId, "Deployment completed successfully.");
       logger.info("Deployment completed", { deploymentId });
 
+      if (this.mobileNotifications) {
+        await this.mobileNotifications.notify({
+          userId: deployment.userId,
+          eventId: `${deploymentId}:completed`,
+          type: "deployment-completed",
+          title: `${repository.name} deployment completed`,
+          body: "Your deployment completed successfully.",
+          projectId: repository.id,
+          deploymentId,
+        });
+      }
+
       // Success email with the live production URLs (best-effort).
       if (this.emails) {
         const final = await this.deploymentRepository.findById(deploymentId).catch(() => null);
@@ -678,6 +714,23 @@ export class DeploymentOrchestrator {
     if (this.emails) {
       const ref = await this.mailRef(deploymentId);
       if (ref) await this.emails.sendFailure(ref, message, diagnosis);
+    }
+    if (this.mobileNotifications) {
+      const deployment = await this.deploymentRepository.findById(deploymentId).catch(() => null);
+      const repository = deployment
+        ? await this.repositoryRepository.findById(deployment.repositoryId).catch(() => null)
+        : null;
+      if (deployment && repository) {
+        await this.mobileNotifications.notify({
+          userId: deployment.userId,
+          eventId: `${deploymentId}:failed`,
+          type: "deployment-failed",
+          title: `${repository.name} deployment failed`,
+          body: "The deployment failed. Review its logs in Deplo for details.",
+          projectId: repository.id,
+          deploymentId,
+        });
+      }
     }
   }
 

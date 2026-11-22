@@ -68,3 +68,15 @@ CREATE TABLE "NotificationEvent" (
 CREATE UNIQUE INDEX "NotificationEvent_userId_eventId_key" ON "NotificationEvent"("userId", "eventId");
 CREATE INDEX "NotificationEvent_userId_createdAt_idx" ON "NotificationEvent"("userId", "createdAt");
 ALTER TABLE "NotificationEvent" ADD CONSTRAINT "NotificationEvent_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+CREATE TABLE "PushReceipt" (
+    "id" TEXT NOT NULL,
+    "deviceId" TEXT NOT NULL,
+    "ticketId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "checkedAt" TIMESTAMP(3),
+    CONSTRAINT "PushReceipt_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX "PushReceipt_ticketId_key" ON "PushReceipt"("ticketId");
+CREATE INDEX "PushReceipt_checkedAt_createdAt_idx" ON "PushReceipt"("checkedAt", "createdAt");
+ALTER TABLE "PushReceipt" ADD CONSTRAINT "PushReceipt_deviceId_fkey" FOREIGN KEY ("deviceId") REFERENCES "MobileDevice"("id") ON DELETE CASCADE ON UPDATE CASCADE;
