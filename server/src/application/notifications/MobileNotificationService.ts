@@ -27,7 +27,7 @@ interface ExpoTicket {
   details?: { error?: string };
 }
 
-interface ExpoReceipt extends ExpoTicket {}
+type ExpoReceipt = ExpoTicket;
 
 /** Persists in-app history and best-effort dispatches Expo tokens to FCM/APNs. */
 export class MobileNotificationService {
