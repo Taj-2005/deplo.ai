@@ -7,16 +7,12 @@ import { getIntegrations } from "@/lib/dashboard-api";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { FeedbackWidget } from "./FeedbackWidget";
+import { BrandLoader } from "@/components/BrandLoader";
 
 function LoadingScreen() {
   return (
     <div className="h-screen ds-dotgrid flex items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-5 h-5 border-2 border-ds-primary border-t-transparent rounded-full animate-spin" />
-        <span className="text-[11px] font-mono text-ds-on-variant tracking-[0.08em] uppercase">
-          Loading
-        </span>
-      </div>
+      <BrandLoader label="Loading" />
     </div>
   );
 }

@@ -204,6 +204,46 @@ body {
   animation: pv-env-sweep 3s ease-in-out infinite 2s;
 }
 
+/* ── Brand loader — logo pulse with two expanding rings (cyan/violet) ───────
+   Shared across every full-page/section loading state. Web ports the same
+   animation the mobile app uses for its boot/project/deployment loaders,
+   but needs no JS: prefers-reduced-motion is a plain media query here. */
+@keyframes loader-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.1); }
+}
+@keyframes loader-ring-cyan {
+  0%   { transform: scale(1); opacity: 0.55; }
+  60%  { opacity: 0.12; }
+  100% { transform: scale(1.85); opacity: 0; }
+}
+@keyframes loader-ring-violet {
+  0%, 50% { transform: scale(1); opacity: 0; }
+  85%     { opacity: 0.45; }
+  100%    { transform: scale(1.85); opacity: 0; }
+}
+
+.brand-loader-mark {
+  animation: loader-pulse 1.7s ease-in-out infinite;
+}
+.brand-loader-ring-cyan {
+  animation: loader-ring-cyan 1.7s ease-in-out infinite;
+}
+.brand-loader-ring-violet {
+  animation: loader-ring-violet 1.7s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-loader-mark {
+    animation: none;
+  }
+  .brand-loader-ring-cyan,
+  .brand-loader-ring-violet {
+    animation: none;
+    opacity: 0;
+  }
+}
+
 /* ── Docs portal ────────────────────────────────────────────────────────────
    Syntax token colors — the two chart hues (cyan/violet) validated for both
    themes, plus design-system inks. Consumed by lib/docs/highlight.tsx. */

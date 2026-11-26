@@ -8,6 +8,7 @@ import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 import { connectRender, getIntegrations, getVercelInstallUrl } from "@/lib/dashboard-api";
 import { APP_VERSION } from "@/lib/version";
+import { BrandLoader } from "@/components/BrandLoader";
 
 // ─── Vercel logo ──────────────────────────────────────────────────────────────
 
@@ -156,7 +157,7 @@ function OnboardingContent() {
   if (!loaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-ds-bg">
-        <div className="w-5 h-5 border-2 border-ds-primary border-t-transparent rounded-full animate-spin" />
+        <BrandLoader />
       </div>
     );
   }
@@ -352,7 +353,7 @@ function OnboardingContent() {
 function OnboardingFallback() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-ds-bg">
-      <div className="w-5 h-5 border-2 border-ds-primary border-t-transparent rounded-full animate-spin" />
+      <BrandLoader />
     </div>
   );
 }

@@ -49,6 +49,12 @@ export const DOCS_NAV: DocSection[] = [
         description: "The moving parts: dashboard, API, queue, detection engine, and providers.",
         searchTerms: ["how it works", "system design", "components", "high level"],
       },
+      {
+        href: "/docs/getting-started/android-app",
+        title: "Android App",
+        description: "The deplo.ai Android app: current beta status, what it does, and how to install the APK.",
+        searchTerms: ["android", "apk", "mobile app", "beta", "download", "push notifications", "biometric", "fingerprint"],
+      },
     ],
   },
   {

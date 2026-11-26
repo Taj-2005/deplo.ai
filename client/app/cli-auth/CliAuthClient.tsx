@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Terminal, ShieldCheck } from "lucide-react";
 import { getToken, isTokenValid, getGithubAuthUrl } from "@/lib/auth";
 import { createCliToken } from "@/lib/dashboard-api";
+import { BrandLoader } from "@/components/BrandLoader";
 
 export const RETURN_TO_KEY = "deplo_return_to";
 
@@ -72,11 +73,13 @@ export function CliAuthClient() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-6 bg-white dark:bg-ds-bg">
-      <Image src="/logo.png" alt="deplo.ai" width={40} height={40} className="object-contain dark:hidden" />
-      <Image src="/logo-dark.png" alt="deplo.ai" width={40} height={40} className="object-contain hidden dark:block" />
-
-      {phase === "checking" && (
-        <div className="w-5 h-5 border-2 border-ds-primary border-t-transparent rounded-full animate-spin" />
+      {phase === "checking" ? (
+        <BrandLoader />
+      ) : (
+        <>
+          <Image src="/logo.png" alt="deplo.ai" width={40} height={40} className="object-contain dark:hidden" />
+          <Image src="/logo-dark.png" alt="deplo.ai" width={40} height={40} className="object-contain hidden dark:block" />
+        </>
       )}
 
       {phase === "invalid" && (
