@@ -11,14 +11,17 @@ import { FAQ } from "@/components/landing/FAQ";
 import { FinalCTA } from "@/components/landing/FinalCTA";
 import { Footer } from "@/components/landing/Footer";
 import { FeedbackWidget } from "@/components/dashboard/FeedbackWidget";
+import { getLatestAndroidApkUrl } from "@/lib/mobileRelease";
 
-export default function Home() {
+export default async function Home() {
+  const androidApkUrl = await getLatestAndroidApkUrl();
+
   return (
     <>
       <AuthPageShell />
       <Navbar />
       <main id="main-content" role="main" aria-label="Main content" className="flex flex-col">
-        <Hero />
+        <Hero androidApkUrl={androidApkUrl} />
         <HowItWorks />
         <Terminal />
         <Cli />

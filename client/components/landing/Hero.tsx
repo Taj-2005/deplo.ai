@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useInView } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Download } from "lucide-react";
 import Image from "next/image";
 import { useRef, useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
@@ -13,6 +13,26 @@ function SparkIcon({ size = 14, className = "" }: { size?: number; className?: s
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
       <path d="M8 1L9 6.5H14.5L10 9.5L11.5 15L8 11.5L4.5 15L6 9.5L1.5 6.5H7L8 1Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+/* ── Android glyph (simplified bugdroid silhouette, no brand asset needed) ── */
+function AndroidIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
+      <path
+        d="M7.5 5.5 6 3.3M16.5 5.5 18 3.3"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+      />
+      <path
+        d="M5 9a7 7 0 0 1 14 0v9a1 1 0 0 1-1 1h-1v2.2a1.3 1.3 0 0 1-2.6 0V19h-2.8v2.2a1.3 1.3 0 0 1-2.6 0V19H7a1 1 0 0 1-1-1V9Z"
+        fill="currentColor"
+      />
+      <rect x="2.6" y="9.5" width="2" height="6" rx="1" fill="currentColor" />
+      <rect x="19.4" y="9.5" width="2" height="6" rx="1" fill="currentColor" />
     </svg>
   );
 }
@@ -338,7 +358,7 @@ const stats = [
 ];
 
 /* ── Hero section ── */
-export function Hero() {
+export function Hero({ androidApkUrl }: { androidApkUrl: string }) {
   const { isAuthenticated, launchApp, connectGithub } = useAuthNavigation();
 
   return (
@@ -442,18 +462,38 @@ export function Hero() {
           </a>
         </motion.div>
 
-        {/* Terminal alternative — the CLI is a first-class entry point */}
-        <motion.a
-          href="#cli"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+        {/* Secondary entry points — CLI and the Android beta APK, as bordered
+            pills so they read as distinct, tappable options instead of
+            floating dim text (which wrapped into orphaned fragments on
+            narrow viewports). */}
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.55 }}
-          className="group -mt-1 flex items-center gap-2 font-mono text-[12.5px] text-[#94A3B8] hover:text-black transition-colors"
+          className="-mt-1 flex flex-col items-center gap-2.5"
         >
-          <span className="text-[#CBD5E1] group-hover:text-[#00D2FF] transition-colors">$</span>
-          npx @deplo.ai/cli
-          <span className="text-[#CBD5E1]">— prefer the terminal?</span>
-        </motion.a>
+          <span className="text-[11.5px] text-[#94A3B8]">Prefer another way in?</span>
+          <div className="flex flex-wrap items-center justify-center gap-2.5">
+            <a
+              href="#cli"
+              className="group flex items-center gap-2 border border-[#E2E8F0] bg-white px-3.5 py-2 font-mono text-[12.5px] text-[#475569] whitespace-nowrap hover:border-black/20 hover:text-black transition-colors"
+            >
+              <span className="text-[#00B8E0]">$</span>
+              npx @deplo.ai/cli
+            </a>
+            <a
+              href={androidApkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-2 border border-[#E2E8F0] bg-white px-3.5 py-2 text-[12.5px] font-medium text-[#475569] whitespace-nowrap hover:border-[#3DDC84]/60 hover:text-black transition-colors"
+            >
+              <AndroidIcon size={14} className="text-[#3DDC84]" />
+              Android APK
+              <span className="text-[9.5px] font-bold uppercase tracking-wider text-[#7928CA]">Beta</span>
+              <Download size={12} className="text-[#94A3B8] group-hover:text-black transition-colors" />
+            </a>
+          </div>
+        </motion.div>
 
         {/* Pipeline visualization */}
         <PipelineViz />
