@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { getIntegrations } from "@/lib/dashboard-api";
-import Image from "next/image";
+import { BrandLoader } from "@/components/BrandLoader";
 
 export function AuthCallbackClient() {
   const router = useRouter();
@@ -49,12 +49,7 @@ export function AuthCallbackClient() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-5 bg-white dark:bg-ds-bg">
-      <Image src="/logo.png" alt="deplo.ai" width={40} height={40} className="object-contain dark:hidden" />
-      <Image src="/logo-dark.png" alt="deplo.ai" width={40} height={40} className="object-contain hidden dark:block" />
-      <div className="flex flex-col items-center gap-2">
-        <div className="w-5 h-5 border-2 border-ds-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-[13px] font-mono text-ds-on-variant">Connecting your GitHub account…</p>
-      </div>
+      <BrandLoader label="Connecting your GitHub account…" />
     </div>
   );
 }
